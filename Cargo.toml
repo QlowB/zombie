@@ -1,0 +1,7 @@
+[package]
+name = "zombie"
+version = "0.1.0"
+authors = ["Nicolas Winkler <nicolas.winkler@gmx.ch>"]
+edition = "2018"
+
+[dependencies]
