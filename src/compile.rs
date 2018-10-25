@@ -4,6 +4,8 @@ use std::io::{Write, Read};
 use std::mem;
 use super::ir::{MutVisitor, Instruction};
 
+use winapi::um::memoryapi::VirtualAlloc;
+use winapi::um::winnt::{MEM_COMMIT, PAGE_EXECUTE_READWRITE};
 
 use dynasmrt::{DynasmApi, DynasmLabelApi};
 
@@ -36,14 +38,16 @@ pub fn compile(mut instrs: Vec<ir::Instruction>) -> Vec<u8> {
     let entry = cg.buffer.offset();
 
     cg.visit_instructions(&mut instrs);
+    cg.buffer.commit();
     cg.finalize();
-    let buf = cg.buffer.finalize().unwrap();
+    //let buf = cg.buffer.finalize().unwrap();
 
-    let ret = buf.to_vec();
+    //let ret = buf.to_vec();
     //println!("{:02x?}", ret);
 
     let function: extern "C" fn(memory: *mut u8) -> bool = unsafe {
-        mem::transmute(buf.ptr(entry))
+        //mem::transmute(cg.get_callable())
+        mem::transmute(cg.buffer.finalize().unwrap().ptr(entry))
     };
 
     let mut data: Vec<u8> = Vec::with_capacity(100000);
@@ -53,7 +57,8 @@ pub fn compile(mut instrs: Vec<ir::Instruction>) -> Vec<u8> {
     }
 
     //cg.into_vec()
-    ret
+    //ret
+    vec![]
 }
 
 pub struct CodeGenerator {
@@ -78,6 +83,21 @@ impl CodeGenerator {
             ; ret
         );
     }
+
+    #[cfg(target_os = "windows")]
+    pub fn get_callable(self) -> *const u8 {
+        let data = self.buffer.finalize().unwrap().to_vec();
+        println!("asm buffer of size {}", data.len());
+        let ex = unsafe { VirtualAlloc(0 as _, data.len(), MEM_COMMIT, PAGE_EXECUTE_READWRITE) };
+        unsafe {
+            std::ptr::copy_nonoverlapping(data.as_ptr(), ex as _, data.len());
+        }
+        ex as _
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    pub fn get_callable(self) {
+    }
 }
 
 impl ir::MutVisitor for CodeGenerator {
@@ -87,34 +107,6 @@ impl ir::MutVisitor for CodeGenerator {
         if let Instruction::Add{ offset, value } = add {
             dynasm!(self.buffer
                 ; add [rdi + rsi + *offset as i32], BYTE *value as i8
-            );
-        }
-    }
-
-    fn visit_move_ptr(&mut self, mp: &'_ mut Instruction) {
-        if let Instruction::MovePtr(offset) = mp {
-            dynasm!(self.buffer
-                ; add rsi, DWORD *offset as i32
-            );
-        }
-    }
-
-    fn visit_loop(&mut self, l: &mut Instruction) {
-        if let Instruction::Loop(insts) = l {
-            let begin = self.buffer.new_dynamic_label();
-            let end = self.buffer.new_dynamic_label();
-            dynasm!(self.buffer
-                ; mov al, BYTE [rdi + rsi]
-                ; test al, al
-                ; jz => end
-                ; => begin
-            );
-            self.visit_instructions(insts);
-            dynasm!(self.buffer
-                ; mov al, BYTE [rdi + rsi]
-                ; test al, al
-                ; jnz => begin 
-                ; => end 
             );
         }
     }
@@ -172,22 +164,34 @@ impl ir::MutVisitor for CodeGenerator {
         }
     }
 
-    fn visit_write(&mut self, w: &mut Instruction) {
-        if let Instruction::Write(offset) = w {
+    fn visit_move_ptr(&mut self, mp: &'_ mut Instruction) {
+        if let Instruction::MovePtr(offset) = mp {
             dynasm!(self.buffer
-                ; push rdi
-                ; push rsi
-                ; sub rsp, 24
-                ; mov dil, BYTE [rdi + rsi + *offset as i32]
-                ; mov rax, QWORD putbyte as _
-                ; call rax
-                ; add rsp, 24
-                ; pop rsi
-                ; pop rdi
+                ; add rsi, DWORD *offset as i32
             );
         }
     }
 
+    fn visit_loop(&mut self, l: &mut Instruction) {
+        if let Instruction::Loop(insts) = l {
+            let begin = self.buffer.new_dynamic_label();
+            let end = self.buffer.new_dynamic_label();
+            dynasm!(self.buffer
+                ; mov al, BYTE [rdi + rsi]
+                ; test al, al
+                ; jz => end
+                ; => begin
+            );
+            self.visit_instructions(insts);
+            dynasm!(self.buffer
+                ; mov al, BYTE [rdi + rsi]
+                ; test al, al
+                ; jnz => begin
+                ; => end
+            );
+        }
+    }
+    
     fn visit_read(&mut self, r: &mut Instruction) {
         if let Instruction::Read(offset) = r {
             dynasm!(self.buffer
@@ -200,6 +204,22 @@ impl ir::MutVisitor for CodeGenerator {
                 ; pop rsi
                 ; pop rdi
                 ; mov BYTE [rdi + rsi + *offset as i32], al
+            );
+        }
+    }
+
+    fn visit_write(&mut self, w: &mut Instruction) {
+        if let Instruction::Write(offset) = w {
+            dynasm!(self.buffer
+                ; push rdi
+                ; push rsi
+                ; sub rsp, 24
+                ; mov dil, BYTE [rdi + rsi + *offset as i32]
+                ; mov rax, QWORD putbyte as _
+                ; call rax
+                ; add rsp, 24
+                ; pop rsi
+                ; pop rdi
             );
         }
     }

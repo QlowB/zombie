@@ -4,6 +4,8 @@
 //#[macro_use]
 //extern crate dynasm;
 
+extern crate winapi;
+
 use std::io::{self, Read};
 use std::fs::File;
 use std::env;
@@ -36,7 +38,8 @@ fn main() -> io::Result<()> {
 
         //interpret::run(&insts);
         let code = compile::compile(insts);
-        
+
+
         //println!("{:?}", code.into_iter().map(|x| format!("{:x}", x)).collect::<Vec<String>>());
     }
     else if let Err(msg) = insts {

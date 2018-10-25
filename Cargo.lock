@@ -91,6 +91,7 @@ version = "0.1.0"
 dependencies = [
  "dynasm 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "dynasmrt 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [metadata]
