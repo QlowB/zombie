@@ -42,8 +42,15 @@ fn run_instrs(instructions: &Vec<Instruction>, data: &mut Data) {
                 let cell = data.memory[(data.ptr + offset) as usize % len];
                 io::stdout().write(&[cell]).unwrap();
                 io::stdout().flush().unwrap();
-            }
-            _ => {}
+            },
+            Instruction::LinearLoop(factors) => {
+                assert_eq!(factors.get(&0), Some(&-1));
+                let multiplicator = data.memory[(data.ptr as usize) % len];
+                for (offset, value) in factors {
+                    let cell = &mut data.memory[(data.ptr + offset) as usize % len];
+                    *cell = cell.wrapping_add(multiplicator.wrapping_mul(*value as u8));
+                }
+            },
         }
     }
 }

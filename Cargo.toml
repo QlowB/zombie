@@ -4,4 +4,10 @@ version = "0.1.0"
 authors = ["Nicolas Winkler <nicolas.winkler@gmx.ch>"]
 edition = "2018"
 
+#[dependencies.assembler]
+#path = "assembler/workspace/assembler"
+#[dependencies.x86asm]
+#path = "rust-x86asm"
 [dependencies]
+dynasm = "*"
+dynasmrt = "*"
