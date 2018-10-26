@@ -4,34 +4,14 @@ use std::io::{Write, Read};
 use std::mem;
 use super::ir::{MutVisitor, Instruction};
 
+#[cfg(target_os = "windows")]
 use winapi::um::memoryapi::VirtualAlloc;
+#[cfg(target_os = "windows")]
 use winapi::um::winnt::{MEM_COMMIT, PAGE_EXECUTE_READWRITE};
 
 use dynasmrt::{DynasmApi, DynasmLabelApi};
 
 pub fn compile(mut instrs: Vec<ir::Instruction>) -> Vec<u8> {
-    /*let mut ops = dynasmrt::x64::Assembler::new().unwrap();
-    let string = "Hello World!";
-
-    dynasm!(ops
-        ; ->hello:
-        ; .bytes string.as_bytes()
-    );
-
-    let hello = ops.offset();
-    dynasm!(ops
-        ; lea rcx, [->hello]
-        ; xor edx, edx
-        ; mov dl, BYTE string.len() as _
-        ; sub rsp, BYTE 0x28
-        ; call rax
-        ; add rsp, BYTE 0x28
-        ; ret
-    );
-
-    let buf = ops.finalize().unwrap();
-    buf.to_vec()
-    */
     let mut cg = CodeGenerator::new();
     cg.initialize();
 
@@ -40,14 +20,14 @@ pub fn compile(mut instrs: Vec<ir::Instruction>) -> Vec<u8> {
     cg.visit_instructions(&mut instrs);
     cg.buffer.commit();
     cg.finalize();
-    //let buf = cg.buffer.finalize().unwrap();
+    let buf = cg.buffer.finalize().unwrap();
 
     //let ret = buf.to_vec();
     //println!("{:02x?}", ret);
 
     let function: extern "C" fn(memory: *mut u8) -> bool = unsafe {
         //mem::transmute(cg.get_callable())
-        mem::transmute(cg.buffer.finalize().unwrap().ptr(entry))
+        mem::transmute(buf.ptr(entry))
     };
 
     let mut data: Vec<u8> = Vec::with_capacity(100000);
@@ -103,10 +83,21 @@ impl CodeGenerator {
 impl ir::MutVisitor for CodeGenerator {
     type Ret = ();
 
+    fn visit_nop(&mut self, nop: &mut Instruction) {
+    }
+
     fn visit_add(&mut self, add: &'_ mut Instruction) {
         if let Instruction::Add{ offset, value } = add {
             dynasm!(self.buffer
-                ; add [rdi + rsi + *offset as i32], BYTE *value as i8
+                ; add BYTE [rdi + rsi + *offset as i32], *value as i8
+            );
+        }
+    }
+
+    fn visit_set(&mut self, set: &'_ mut Instruction) {
+        if let Instruction::Set{ offset, value } = set {
+            dynasm!(self.buffer
+                ; mov BYTE [rdi + rsi + *offset as i32], *value as i8
             );
         }
     }

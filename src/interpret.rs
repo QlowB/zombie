@@ -22,9 +22,14 @@ fn run_instrs(instructions: &Vec<Instruction>, data: &mut Data) {
     let len = data.memory.len();
     for inst in instructions {
         match inst {
+            Instruction::Nop => {},
             Instruction::Add{ offset, value } => {
                 let cell = &mut data.memory[(data.ptr + offset) as usize % len];
                 *cell = cell.wrapping_add(*value as u8);
+            },
+            Instruction::Set{ offset, value } => {
+                let cell = &mut data.memory[(data.ptr + offset) as usize % len];
+                *cell = *value as u8;
             },
             Instruction::MovePtr(offset) => {
                 data.ptr = data.ptr.wrapping_add(*offset);

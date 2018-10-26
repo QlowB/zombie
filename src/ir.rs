@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub enum Instruction {
+    Nop,
     Add{ offset: i64, value: i64 },
+    Set{ offset: i64, value: i64 },
     LinearLoop(BTreeMap<i64, i64>),
     MovePtr(i64),
     Loop(Vec<Instruction>),
@@ -21,7 +23,15 @@ pub trait MutVisitor {
         }
     }
 
+    fn visit_nop(&mut self, nop: &mut Instruction) -> Self::Ret {
+        Self::Ret::default()
+    }
+
     fn visit_add(&mut self, add: &mut Instruction) -> Self::Ret {
+        Self::Ret::default()
+    }
+
+    fn visit_set(&mut self, add: &mut Instruction) -> Self::Ret {
         Self::Ret::default()
     }
 
@@ -51,7 +61,9 @@ pub trait MutVisitor {
     fn walk_instruction(&mut self, inst: &mut Instruction) -> Self::Ret {
         use self::Instruction::*;
         match inst {
+            Nop => self.visit_nop(inst),
             Add {offset: _, value: _} => self.visit_add(inst),
+            Set {offset: _, value: _} => self.visit_set(inst),
             LinearLoop (_) => self.visit_linear_loop(inst),
             MovePtr(_) => self.visit_move_ptr(inst),
             Loop(_) => self.visit_loop(inst),
