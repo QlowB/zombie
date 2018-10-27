@@ -3,6 +3,19 @@ use std::collections::BTreeMap;
 use super::ir;
 use super::ir::Instruction;
 
+
+
+
+pub struct DfgOptimizer {
+    dfg: DataflowGraph,
+    tape_state: TapeState,
+}
+
+struct DataflowGraph {
+    
+}
+
+
 enum CellState {
     Value(i64),
     Added(i64)
