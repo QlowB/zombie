@@ -2,36 +2,33 @@
 use std::collections::BTreeMap;
 use super::ir;
 use super::ir::Instruction;
+use typed_arena::Arena;
 
-
-
-
-pub struct DfgOptimizer {
-    dfg: DataflowGraph,
-    tape_state: TapeState,
+pub struct DfgOptimizer<'a> {
+    dfg: DataflowGraph<'a>,
+    tape_state: TapeState<'a>,
 }
 
-struct DataflowGraph {
-    
+struct DataflowGraph<'a> {
+    nodes: Arena<DfgNode<'a>>
 }
 
-
-enum CellState {
-    Value(i64),
-    Added(i64)
+enum DfgNode<'a> {
+    Offset(i64),
+    ConstAdd(&'a Cell<DfgNode<'a>>),
+    Const(i64),
+    AddMultiplied(&'a Cell<DfgNode<'a>>, i64, &'a Cell<DfgNode<'a>>),
 }
 
-struct TapeState {
-    pub cell_states: BTreeMap<i64, CellState>
+struct TapeState<'a> {
+    pub cell_states: BTreeMap<i64, DfgNode<'a>>
 }
 
 pub struct Optimizer {
-    state: TapeState
 }
 
-impl TapeState {
-    fn add(&mut self, offset: i64, value: i64) {
-        let cell_state = self.cell_states.get_mut(&offset);
+impl TapeState<'a> {
+    fn add(&'a mut self, offset: i64, value: i64) {
         if let Some(cell) = cell_state {
             let new_cell = match cell {
                 CellState::Value(val) => CellState::Value(*val + value),
@@ -62,9 +59,6 @@ impl TapeState {
 impl Optimizer {
     pub fn new() -> Self {
         Optimizer {
-            state: TapeState {
-                cell_states: BTreeMap::new()
-            }
         }
     }
 }
@@ -79,16 +73,6 @@ impl ir::MutVisitor for Optimizer {
     }
 
     fn visit_add(&mut self, add: &mut Instruction) {
-        if let Instruction::Add{ offset, value } = add {
-            let cell_state = self.state.get(*offset);
-            if let Some(CellState::Value(v)) = cell_state {
-                self.state.add(*offset, *value);
-                //std::mem::replace(add, Instruction::Set{ offset: *offset, value: *value + v });
-            }
-            else {
-                self.state.add(*offset, *value);
-            }
-        }
     }
 
     fn visit_set(&mut self, set: &mut Instruction) {
@@ -126,7 +110,6 @@ impl ir::MutVisitor for Optimizer {
                 std::mem::replace(l, Instruction::LinearLoop(increments));
             }
             // set cell at offset 0 to 0
-            self.state.set(0, 0);
         }
     }
 

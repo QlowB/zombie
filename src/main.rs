@@ -5,6 +5,7 @@
 //extern crate dynasm;
 
 extern crate winapi;
+extern crate typed_arena;
 
 use std::io::{self, Read};
 use std::fs::File;
