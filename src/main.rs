@@ -1,8 +1,8 @@
-#![feature(plugin)]
-#![plugin(dynasm)]
-
-//#[macro_use]
-//extern crate dynasm;
+//#![feature(plugin)]
+//#![plugin(dynasm)]
+#![feature(proc_macro_hygiene)]
+#[macro_use]
+extern crate dynasm;
 
 extern crate winapi;
 extern crate typed_arena;
@@ -11,11 +11,15 @@ use std::io::{self, Read};
 use std::fs::File;
 use std::env;
 
+use dynasm::dynasm;
+use dynasmrt::{DynasmApi, DynasmLabelApi};
+
 pub mod ir;
 pub mod parser;
 pub mod interpret;
 pub mod optimize;
 pub mod compile;
+pub mod transpile_c;
 
 use crate::ir::MutVisitor;
 
@@ -33,15 +37,14 @@ fn main() -> io::Result<()> {
     let insts = parser::parse(&buffer);
     if let Ok(mut insts) = insts {
         let mut lin_loop_optimizer = optimize::Optimizer::new();
-        //println!("code: {:#?}", insts);
         lin_loop_optimizer.visit_instructions(&mut insts);
-        //println!("code: {:#?}", insts);
+        
+        for ref inst in &insts {
+            //println!("{}\n", inst.to_string());
+        }
+        //println!("{}", transpile_c::transpile_c(&insts));
 
-        //interpret::run(&insts);
-        let code = compile::compile(insts);
-
-
-        //println!("{:?}", code.into_iter().map(|x| format!("{:x}", x)).collect::<Vec<String>>());
+        let code = compile::compile(&insts);
     }
     else if let Err(msg) = insts {
         println!("error parsing: {}", msg);
