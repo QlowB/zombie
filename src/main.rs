@@ -39,6 +39,7 @@ fn main() -> io::Result<()> {
     if let Ok(mut insts) = insts {
         let mut lin_loop_optimizer = optimize::LinOptimizer::new();
         lin_loop_optimizer.visit_instructions(&mut insts);
+        std::mem::replace(&mut insts, lin_loop_optimizer.instructions);
         
         for ref inst in &insts {
             //println!("{}\n", inst.to_string());

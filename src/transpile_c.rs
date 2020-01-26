@@ -71,16 +71,16 @@ impl ir::ConstVisitor for CTranspiler {
                 if factor == 0 {
                 }
                 else if factor == 1 {
-                    self.code_buf.add_line(&format!("buffer[{}] += buffer[0];", glob_offset + offset));
+                    self.code_buf.add_line(&format!("buffer[{}] += buffer[{}];", glob_offset + offset, glob_offset));
                 }
                 else if factor == -1 {
-                    self.code_buf.add_line(&format!("buffer[{}] -= buffer[0];", glob_offset + offset));
+                    self.code_buf.add_line(&format!("buffer[{}] -= buffer[{}];", glob_offset + offset, glob_offset));
                 }
                 else {
-                    self.code_buf.add_line(&format!("buffer[{}] += {} * buffer[0];", glob_offset + offset, factor));
+                    self.code_buf.add_line(&format!("buffer[{}] += {} * buffer[{}];", glob_offset + offset, factor, glob_offset));
                 }
             }
-            self.code_buf.add_line("buffer[0] = 0;");
+            self.code_buf.add_line(&format!("buffer[{}] = 0;", glob_offset));
         }
     }
 
