@@ -19,6 +19,7 @@ pub mod parser;
 pub mod interpret;
 pub mod optimize;
 pub mod compile;
+pub mod formatter;
 pub mod transpile_c;
 
 use crate::ir::MutVisitor;

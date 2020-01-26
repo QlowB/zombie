@@ -164,10 +164,10 @@ impl ir::MutVisitor for LinOptimizer {
         }
     }
 
-    fn visit_linear_loop(&mut self, lloop: &'_ mut Instruction) {
+    fn visit_linear_loop(&mut self, lloop: &mut Instruction) {
     }
 
-    fn visit_move_ptr(&mut self, move_ptr: &'_ mut Instruction) {
+    fn visit_move_ptr(&mut self, move_ptr: &mut Instruction) {
         if let Instruction::MovePtr(offset) = move_ptr {
             self.offset += *offset;
         }
