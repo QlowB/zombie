@@ -37,7 +37,7 @@ fn main() -> io::Result<()> {
 
     let insts = parser::parse(&buffer);
     if let Ok(mut insts) = insts {
-        let mut lin_loop_optimizer = optimize::Optimizer::new();
+        let mut lin_loop_optimizer = optimize::LinOptimizer::new();
         lin_loop_optimizer.visit_instructions(&mut insts);
         
         for ref inst in &insts {
