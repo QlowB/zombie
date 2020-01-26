@@ -156,10 +156,10 @@ impl ir::MutVisitor for Optimizer {
     fn visit_set(&mut self, set: &mut Instruction) {
     }
 
-    fn visit_linear_loop(&mut self, lloop: &'_ mut Instruction) {
+    fn visit_linear_loop(&mut self, lloop: &mut Instruction) {
     }
 
-    fn visit_move_ptr(&mut self, move_ptr: &'_ mut Instruction) {
+    fn visit_move_ptr(&mut self, move_ptr: &mut Instruction) {
     }
 
     fn visit_loop(&mut self, l: &mut Instruction) {

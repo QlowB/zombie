@@ -1,4 +1,4 @@
-# 100 bottles of beer in Brainf*ck
+# 99 bottles of beer in Brainf*ck
 # Copyright (C) 2008 Raphael Bois
 # 1671 brainf*ck instructions.
 # Published under GPL v2

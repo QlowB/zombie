@@ -19,6 +19,7 @@ pub mod parser;
 pub mod interpret;
 pub mod optimize;
 pub mod compile;
+pub mod formatter;
 pub mod transpile_c;
 
 use crate::ir::MutVisitor;
@@ -42,9 +43,9 @@ fn main() -> io::Result<()> {
         for ref inst in &insts {
             //println!("{}\n", inst.to_string());
         }
-        //println!("{}", transpile_c::transpile_c(&insts));
+        println!("{}", transpile_c::transpile_c(&insts));
 
-        let code = compile::compile(&insts);
+        //let code = compile::compile(&insts);
     }
     else if let Err(msg) = insts {
         println!("error parsing: {}", msg);

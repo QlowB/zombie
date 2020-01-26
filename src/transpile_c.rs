@@ -1,59 +1,63 @@
 
-use super::{ir, optimize};
+use super::{ir, optimize, formatter};
 
 use ir::Instruction;
 use ir::ConstVisitor;
+use formatter::Formatter;
 
-struct Transpiler {
-    pub code: String
+struct CTranspiler {
+    pub code_buf: Formatter
 }
 
 
 pub fn transpile_c(instrs: &Vec<ir::Instruction>) -> String {
-    let mut transpiler = Transpiler::default();
+    let mut transpiler = CTranspiler::default();
     transpiler.visit_instructions(instrs);
     transpiler.finalize();
-    return transpiler.code;
+    return transpiler.code_buf.get_code();
 }
 
 
-impl Default for Transpiler {
+impl Default for CTranspiler {
     fn default() -> Self {
-        let mut transpiler = Transpiler{ code: "".to_string() };
+        let mut transpiler = CTranspiler{ code_buf: Formatter::new() };
 
-        transpiler.code += r#"#include <stdio.h>
+        transpiler.code_buf.add_line(r#"#include <stdio.h>
 #include <stdlib.h>
+
+
 int main() {
-    unsigned char* buffer = calloc(2000000000, 1);
-    buffer += 1000000000;
-"#;
+    unsigned char* restrict buffer = (unsigned char*) calloc(2000000000, 1);
+    buffer += 1000000000;"#);
+        transpiler.code_buf.indent();
         transpiler
     }
 }
 
-impl Transpiler {
+impl CTranspiler {
     pub fn finalize(&mut self) {
-        self.code += "}\n";
+        self.code_buf.unindent();
+        self.code_buf.add_line("}");
     }
 }
 
 
-impl ir::ConstVisitor for Transpiler {
+impl ir::ConstVisitor for CTranspiler {
     type Ret = ();
 
     fn visit_nop(&mut self, nop: &Instruction) {
-        self.code += "\n";
+        self.code_buf.add_line("");
     }
 
     fn visit_add(&mut self, add: &'_ Instruction) {
         if let Instruction::Add{ offset, value } = add {
-            self.code += &format!("buffer[{}] += {};\n", offset, value);
+            self.code_buf.add_line(&format!("buffer[{}] += {};", offset, value));
         }
     }
 
     fn visit_set(&mut self, set: &'_ Instruction) {
         if let Instruction::Set{ offset, value } = set {
-            self.code += &format!("buffer[{}] = {};\n", offset, value);
+            self.code_buf.add_line(&format!("buffer[{}] = {};", offset, value));
         }
     }
 
@@ -67,42 +71,44 @@ impl ir::ConstVisitor for Transpiler {
                 if factor == 0 {
                 }
                 else if factor == 1 {
-                    self.code += &format!("buffer[{}] += buffer[0];\n", offset);
+                    self.code_buf.add_line(&format!("buffer[{}] += buffer[0];", offset));
                 }
                 else if factor == -1 {
-                    self.code += &format!("buffer[{}] -= buffer[0];\n", offset);
+                    self.code_buf.add_line(&format!("buffer[{}] -= buffer[0];", offset));
                 }
                 else {
-                    self.code += &format!("buffer[{}] += {} * buffer[0];\n", offset, factor);
+                    self.code_buf.add_line(&format!("buffer[{}] += {} * buffer[0];", offset, factor));
                 }
             }
-            self.code += "buffer[0] = 0;\n";
+            self.code_buf.add_line("buffer[0] = 0;");
         }
     }
 
     fn visit_move_ptr(&mut self, mp: &'_ Instruction) {
         if let Instruction::MovePtr(offset) = mp {
-            self.code += &format!("buffer += {};\n", offset);
+            self.code_buf.add_line(&format!("buffer += {};", offset));
         }
     }
 
     fn visit_loop(&mut self, l: &Instruction) {
         if let Instruction::Loop(insts) = l {
-            self.code += "while(buffer[0]) {\n";
+            self.code_buf.add_line("while(buffer[0]) {");
+            self.code_buf.indent();
             self.visit_instructions(insts);
-            self.code += "}\n";
+            self.code_buf.unindent();
+            self.code_buf.add_line("}");
         }
     }
     
     fn visit_read(&mut self, r: &Instruction) {
         if let Instruction::Read(offset) = r {
-            self.code += &format!("buffer[{}] = getchar();\n", offset);
+            self.code_buf.add_line(&format!("buffer[{}] = getchar();", offset));
         }
     }
 
     fn visit_write(&mut self, w: &Instruction) {
         if let Instruction::Write(offset) = w {
-            self.code += &format!("putchar(buffer[{}]);\n", offset);
+            self.code_buf.add_line(&format!("putchar(buffer[{}]);", offset));
         }
     }
 }
