@@ -58,7 +58,7 @@ impl ir::ConstVisitor for Transpiler {
     }
 
     fn visit_linear_loop(&mut self, l: &Instruction) {
-        if let Instruction::LinearLoop(factors) = l {
+        if let Instruction::LinearLoop{ offset: glob_offset, factors } = l {
             for (&offset, &factor) in factors {
                 if offset == 0 {
                     continue;
@@ -67,13 +67,13 @@ impl ir::ConstVisitor for Transpiler {
                 if factor == 0 {
                 }
                 else if factor == 1 {
-                    self.code += &format!("buffer[{}] += buffer[0];\n", offset);
+                    self.code += &format!("buffer[{}] += buffer[0];\n", glob_offset + offset);
                 }
                 else if factor == -1 {
-                    self.code += &format!("buffer[{}] -= buffer[0];\n", offset);
+                    self.code += &format!("buffer[{}] -= buffer[0];\n", glob_offset + offset);
                 }
                 else {
-                    self.code += &format!("buffer[{}] += {} * buffer[0];\n", offset, factor);
+                    self.code += &format!("buffer[{}] += {} * buffer[0];\n", glob_offset + offset, factor);
                 }
             }
             self.code += "buffer[0] = 0;\n";

@@ -95,7 +95,7 @@ impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
             }
 
             if !dirty && increments.get(&0) == Some(&-1) {
-                std::mem::replace(l, Instruction::LinearLoop(increments));
+                std::mem::replace(l, Instruction::LinearLoop{ offset: 0, factors: increments });
             }
             // set cell at offset 0 to 0
         }
@@ -132,11 +132,13 @@ impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
 
 
 pub struct LinOptimizer {
+    offset: i64
 }
 
 impl LinOptimizer {
     pub fn new() -> Self {
         LinOptimizer {
+            offset: 0
         }
     }
 }
@@ -151,15 +153,24 @@ impl ir::MutVisitor for LinOptimizer {
     }
 
     fn visit_add(&mut self, add: &mut Instruction) {
+        if let Instruction::Add{ offset, value: _value } = add {
+            *offset += self.offset;
+        }
     }
 
     fn visit_set(&mut self, set: &mut Instruction) {
+        if let Instruction::Set{ offset, value: _value } = set {
+            *offset += self.offset;
+        }
     }
 
     fn visit_linear_loop(&mut self, lloop: &'_ mut Instruction) {
     }
 
     fn visit_move_ptr(&mut self, move_ptr: &'_ mut Instruction) {
+        if let Instruction::MovePtr(offset) = move_ptr {
+            self.offset += *offset;
+        }
     }
 
     fn visit_loop(&mut self, l: &mut Instruction) {
@@ -179,6 +190,7 @@ impl ir::MutVisitor for LinOptimizer {
                         },
                         _ => {
                             dirty = true;
+                            break;
                         }
                     }
                 }
@@ -189,12 +201,12 @@ impl ir::MutVisitor for LinOptimizer {
                     if v % 2 != 0 {
                         // cases like [-]
                         // also [---]
-                        std::mem::replace(l, Instruction::Set{ offset: 0, value: 0 });
+                        std::mem::replace(l, Instruction::Set{ offset: self.offset, value: 0 });
                     }
                 }
             }
             else if !dirty && increments.get(&0) == Some(&-1) {
-                std::mem::replace(l, Instruction::LinearLoop(increments));
+                std::mem::replace(l, Instruction::LinearLoop{ offset: self.offset, factors: increments });
             }
 
             // set cell at offset 0 to 0
@@ -202,8 +214,14 @@ impl ir::MutVisitor for LinOptimizer {
     }
 
     fn visit_read(&mut self, read: &'_ mut Instruction) {
+        if let Instruction::Read(offset) = read {
+            *offset += self.offset;
+        }
     }
 
     fn visit_write(&mut self, write: &'_ mut Instruction) {
+        if let Instruction::Write(offset) = write {
+            *offset += self.offset;
+        }
     }
 }

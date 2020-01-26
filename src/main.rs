@@ -42,9 +42,9 @@ fn main() -> io::Result<()> {
         for ref inst in &insts {
             //println!("{}\n", inst.to_string());
         }
-        //println!("{}", transpile_c::transpile_c(&insts));
+        println!("{}", transpile_c::transpile_c(&insts));
 
-        let code = compile::compile(&insts);
+        //let code = compile::compile(&insts);
     }
     else if let Err(msg) = insts {
         println!("error parsing: {}", msg);

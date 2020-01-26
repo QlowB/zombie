@@ -5,7 +5,7 @@ pub enum Instruction {
     Nop,
     Add{ offset: i64, value: i64 },
     Set{ offset: i64, value: i64 },
-    LinearLoop(BTreeMap<i64, i64>),
+    LinearLoop{ offset: i64, factors: BTreeMap<i64, i64> },
     MovePtr(i64),
     Loop(Vec<Instruction>),
     Read(i64),
@@ -34,7 +34,7 @@ impl Instruction {
                 }
             },
             Set{ offset, value } => format!("Set(@{}, {})", offset, value),
-            LinearLoop(map) => {
+            LinearLoop{ offset, factors } => {
                 "LinearLoop".to_string()
             },
             MovePtr(val) => format!("MovePtr({})", val),
@@ -101,9 +101,9 @@ pub trait MutVisitor {
         use self::Instruction::*;
         match inst {
             Nop => self.visit_nop(inst),
-            Add {offset: _, value: _} => self.visit_add(inst),
-            Set {offset: _, value: _} => self.visit_set(inst),
-            LinearLoop (_) => self.visit_linear_loop(inst),
+            Add { offset: _, value: _ } => self.visit_add(inst),
+            Set { offset: _, value: _ } => self.visit_set(inst),
+            LinearLoop { offset: _, factors: _ } => self.visit_linear_loop(inst),
             MovePtr(_) => self.visit_move_ptr(inst),
             Loop(_) => self.visit_loop(inst),
             Read(_) => self.visit_read(inst),
@@ -162,7 +162,7 @@ pub trait ConstVisitor {
             Nop => self.visit_nop(inst),
             Add {offset: _, value: _} => self.visit_add(inst),
             Set {offset: _, value: _} => self.visit_set(inst),
-            LinearLoop (_) => self.visit_linear_loop(inst),
+            LinearLoop { offset: _, factors: _ } => self.visit_linear_loop(inst),
             MovePtr(_) => self.visit_move_ptr(inst),
             Loop(_) => self.visit_loop(inst),
             Read(_) => self.visit_read(inst),

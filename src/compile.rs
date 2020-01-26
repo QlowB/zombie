@@ -112,11 +112,11 @@ impl ir::ConstVisitor for CodeGenerator {
     }
 
     fn visit_linear_loop(&mut self, l: &Instruction) {
-        if let Instruction::LinearLoop(factors) = l {
+        if let Instruction::LinearLoop{ offset: glob_offset, factors } = l {
             if factors.len() > 1 ||
                 factors.len() >= 1 && !factors.contains_key(&0) {
                 dynasm!(self.buffer
-                    ; mov cl, BYTE [rdi]
+                    ; mov cl, BYTE [rdi + *glob_offset as i32]
                 );
             }
             for (&offset, &factor) in factors {
@@ -124,42 +124,44 @@ impl ir::ConstVisitor for CodeGenerator {
                     continue;
                 }
 
+                let absoff = offset + glob_offset;
+
                 if factor == 0 {
                 }
                 else if factor == 1 {
                     dynasm!(self.buffer
-                        ; add BYTE [rdi + offset as i32], cl
+                        ; add BYTE [rdi + absoff as i32], cl
                     );
                 }
                 else if factor == -1 {
                     dynasm!(self.buffer
-                        ; sub BYTE [rdi + offset as i32], cl
+                        ; sub BYTE [rdi + absoff as i32], cl
                     );
                 }
                 else if factor.count_ones() == 1 {
                     dynasm!(self.buffer
                         ; mov bl, cl
                         ; shl bl, factor.trailing_zeros() as i8
-                        ; add BYTE [rdi + offset as i32], bl
+                        ; add BYTE [rdi + absoff as i32], bl
                     );
                 }
                 else if (-factor).count_ones() == 1 {
                     dynasm!(self.buffer
                         ; mov bl, cl
                         ; shl bl, factor.trailing_zeros() as i8
-                        ; sub BYTE [rdi + offset as i32], bl
+                        ; sub BYTE [rdi + absoff as i32], bl
                     );
                 }
                 else {
                     dynasm!(self.buffer
                         ; mov al, factor as i8
                         ; mul cl
-                        ; add BYTE [rdi + offset as i32], al
+                        ; add BYTE [rdi + absoff as i32], al
                     );
                 }
             }
             dynasm!(self.buffer
-                ; mov BYTE [rdi], 0
+                ; mov BYTE [rdi + *glob_offset as i32], 0
             );
         }
     }

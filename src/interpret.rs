@@ -48,11 +48,11 @@ fn run_instrs(instructions: &Vec<Instruction>, data: &mut Data) {
                 io::stdout().write(&[cell]).unwrap();
                 io::stdout().flush().unwrap();
             },
-            Instruction::LinearLoop(factors) => {
+            Instruction::LinearLoop{ offset: glob_offset, factors } => {
                 assert_eq!(factors.get(&0), Some(&-1));
-                let multiplicator = data.memory[(data.ptr as usize) % len];
+                let multiplicator = data.memory[((data.ptr + glob_offset) as usize) % len];
                 for (offset, value) in factors {
-                    let cell = &mut data.memory[(data.ptr + offset) as usize % len];
+                    let cell = &mut data.memory[(data.ptr + offset + glob_offset) as usize % len];
                     *cell = cell.wrapping_add(multiplicator.wrapping_mul(*value as u8));
                 }
             },
