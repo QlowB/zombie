@@ -131,17 +131,17 @@ impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
 
 
 
-pub struct Optimizer {
+pub struct LinOptimizer {
 }
 
-impl Optimizer {
+impl LinOptimizer {
     pub fn new() -> Self {
-        Optimizer {
+        LinOptimizer {
         }
     }
 }
 
-impl ir::MutVisitor for Optimizer {
+impl ir::MutVisitor for LinOptimizer {
     type Ret = ();
 
     fn visit_instructions(&mut self, instr: &mut Vec<Instruction>) {
