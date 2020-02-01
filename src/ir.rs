@@ -43,7 +43,7 @@ impl Instruction {
                 }
             },
             Set{ offset, value } => format!("Set(@{}, {})", offset, value),
-            LinearLoop{ offset, factors } => {
+            LinearLoop{ offset: _offset, factors: _factors } => {
                 "LinearLoop".to_string()
             },
             MovePtr(val) => format!("MovePtr({})", val),
@@ -62,6 +62,7 @@ impl Instruction {
     }
 }
 
+#[allow(unused_variables)]
 pub trait MutVisitor {
     type Ret: Default;
 
@@ -121,6 +122,7 @@ pub trait MutVisitor {
     }
 }
 
+#[allow(unused_variables)]
 pub trait ConstVisitor {
     type Ret: Default;
 

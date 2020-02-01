@@ -1,5 +1,5 @@
 
-use super::super::{ir, optimize, formatter};
+use super::super::{ir, formatter};
 
 use ir::Instruction;
 use ir::ConstVisitor;

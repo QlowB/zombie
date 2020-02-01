@@ -11,9 +11,6 @@ use std::io::{self, Read};
 use std::fs::File;
 use std::env;
 
-use dynasm::dynasm;
-use dynasmrt::{DynasmApi, DynasmLabelApi};
-
 pub mod ir;
 pub mod parser;
 pub mod interpret;
@@ -22,7 +19,6 @@ pub mod compile;
 pub mod formatter;
 pub mod trans;
 
-use trans::{c};
 
 use crate::ir::MutVisitor;
 
@@ -43,12 +39,12 @@ fn main() -> io::Result<()> {
         lin_loop_optimizer.visit_instructions(&mut insts);
         std::mem::replace(&mut insts, lin_loop_optimizer.instructions);
         
-        for ref inst in &insts {
+        //for ref inst in &insts {
             //println!("{}\n", inst.to_string());
-        }
+        //}
         //println!("{}", trans::java::transpile(&insts));
 
-        let code = compile::compile(&insts);
+        let _code = compile::compile(&insts);
     }
     else if let Err(msg) = insts {
         println!("error parsing: {}", msg);
