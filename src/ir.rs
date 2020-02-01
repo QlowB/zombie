@@ -2,13 +2,22 @@ use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub enum Instruction {
+    // No instruction
     Nop,
+    // Add a constnant value to the cell at a specific offset
     Add{ offset: i64, value: i64 },
+    // Set the cell at the specified offset to a constant value
     Set{ offset: i64, value: i64 },
+    // Add the value at offset to all cells specified by factors
+    // multiplied (factors indices are relative to offset)
     LinearLoop{ offset: i64, factors: BTreeMap<i64, i64> },
+    // Move the current cell pointer
     MovePtr(i64),
+    // A loop that is executed until the current cell is 0
     Loop(Vec<Instruction>),
+    // Read one input symbol into the current cell
     Read(i64),
+    // Print the current cell
     Write(i64)
 }
 

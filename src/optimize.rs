@@ -5,25 +5,16 @@ use super::ir::Instruction;
 use typed_arena::Arena;
 
 pub struct DfgOptimizer<'a> {
-    dfg: DataflowGraph<'a>,
-    cell_states: BTreeMap<i64, DfgNode<'a>>,
+    arena: Arena<DfgNode<'a>>,
+    cell_states: BTreeMap<i64, &'a DfgNode<'a>>,
     cfg: Vec<DfInstr<'a>>,
 }
 
-struct DataflowGraph<'a> {
-    arena: Arena<DfgNode<'a>>,
-}
-
-pub struct DfgNode<'a> {
-    storation: Option<compile::Storation>,
-    kind: DfgNodeKind<'a>,
-}
-
-pub enum DfgNodeKind<'a> {
-    Offset(i64),
-    ConstAdd(&'a DfgNode<'a>),
+pub enum DfgNode<'a> {
+    Cell(i64),
     Const(i64),
-    AddMultiplied(&'a DfgNode<'a>, i64, &'a DfgNode<'a>),
+    Add(&'a DfgNode<'a>, &'a DfgNode<'a>),
+    Multiply(&'a DfgNode<'a>, &'a DfgNode<'a>),
     Read(),
 }
 
@@ -33,16 +24,17 @@ pub enum DfInstr<'a> {
     Loop(i64, Vec<DfInstr<'a>>),
 }
 
-impl<'a> DfgNode<'a> {
-    pub fn new(kind: DfgNodeKind<'a>) -> Self {
-        DfgNode {
-            storation: None,
-            kind: kind
-        }
-    }
-}
 
 impl<'a> DfgOptimizer<'a> {
+    fn get_cell(&'a self, offset: i64) -> &'a DfgNode<'a> {
+        if let Some(cell) = self.cell_states.get(&offset) {
+            cell
+        }
+        else {
+            let off: &mut DfgNode<'a> = self.arena.alloc(DfgNode::Cell(offset));
+            off
+        }
+    }
 }
 
 impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
@@ -56,14 +48,19 @@ impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
 
     fn visit_add(&mut self, add: &mut Instruction) {
         if let Instruction::Add{ offset, value } = add {
-            let arena = &self.dfg.arena;
-            let load = RefCell::new(arena.alloc(DfgNode::new(DfgNodeKind::Offset(*offset))));
-            //let addition: &'a _ = arena.alloc(DfgNode::new(DfgNodeKind::ConstAdd(load)));
-            //self.cfg.push(DfInstr::WriteMem(*offset, addition));
+            /*let cell = self.get_cell(*offset);
+            let adder = self.arena.alloc(DfgNode::Const(*value));
+            let addition = self.arena.alloc(DfgNode::Add(cell, adder));
+            */
         }
     }
 
-    fn visit_set(&mut self, set: &mut Instruction) {
+    fn visit_set<'b>(&'b mut self, set: &mut Instruction) {
+        if let Instruction::Set{ offset, value } = set {
+            let arena: &'b _ = &self.arena;
+            let setter: &'b DfgNode<'a> = arena.alloc(DfgNode::Const(*value));
+            self.cell_states.insert(13, setter);
+        }
     }
 
     fn visit_linear_loop(&mut self, lloop: &'_ mut Instruction) {
@@ -110,6 +107,19 @@ impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
 
 
 
+
+struct MemoryState {
+    cellStates: BTreeMap<i64, CellState>,
+    default_cell: CellState
+}
+
+enum CellState {
+    Unknown,
+    Const(i64),
+    OtherCell(usize),
+    Sum(usize, usize),
+    Prod(usize, usize),
+}
 
 
 
@@ -186,9 +196,10 @@ impl ir::MutVisitor for LinOptimizer {
             let mut dirty = false;
 
             // pointer movement to be added in case this loop cannot be linearized
+            // also copy the instruction list (essentially push the optimizer state on a stack
+            // for the loop)
             let offset_before = self.offset;
             self.offset = 0;
-
             let mut swap: Vec<Instruction> = Vec::new();
             std::mem::swap(&mut self.instructions, &mut swap);
 

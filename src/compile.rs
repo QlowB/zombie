@@ -116,7 +116,7 @@ impl ir::ConstVisitor for CodeGenerator {
             if factors.len() > 1 ||
                 factors.len() >= 1 && !factors.contains_key(&0) {
                 dynasm!(self.buffer
-                    ; movzx ecx, BYTE [rdi]
+                    ; movzx ecx, BYTE [rdi + *glob_offset as i32]
                 );
             }
             for (&offset, &factor) in factors {
