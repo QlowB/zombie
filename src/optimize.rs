@@ -1,11 +1,10 @@
-use std::cell::{RefCell};
 use std::collections::BTreeMap;
 use super::{ir};
 use super::ir::Instruction;
 use typed_arena::Arena;
 
 pub struct DfgOptimizer<'a> {
-    arena: Arena<DfgNode<'a>>,
+    arena: &'a Arena<DfgNode<'a>>,
     cell_states: BTreeMap<i64, &'a DfgNode<'a>>,
     cfg: Vec<DfInstr<'a>>,
 }
@@ -19,37 +18,41 @@ pub enum DfgNode<'a> {
 }
 
 pub enum DfInstr<'a> {
-    Print(&'a RefCell<DfgNode<'a>>),
+    Print(&'a DfgNode<'a>),
     WriteMem(i64, &'a DfgNode<'a>),
+    MovePtr(i64),
     Loop(i64, Vec<DfInstr<'a>>),
 }
 
 
 impl<'a> DfgOptimizer<'a> {
 
-    fn new() -> Self {
+    fn new(arena: &'a Arena<DfgNode<'a>>) -> Self {
         DfgOptimizer {
-            arena: Arena::new(),
+            arena: arena,
             cell_states: BTreeMap::new(),
             cfg: Vec::new()
         }
     }
 
-    fn get_cell<'b: 'a>(&'b self, offset: i64) -> &'a DfgNode<'a> {
+    fn get_cell(&self, offset: i64) -> &'a DfgNode<'a> {
         if let Some(cell) = self.cell_states.get(&offset) {
             cell
         }
         else {
-            let off: &'b mut DfgNode<'a> = self.arena.alloc(DfgNode::Cell(offset));
-            off
+            self.arena.alloc(DfgNode::Cell(offset))
         }
     }
-/*}
 
-impl<'a> ir::MutVisitor<'a> for DfgOptimizer<'a> {
+    fn set_cell(&mut self, offset: i64, cell: &'a DfgNode<'a>) {
+        self.cell_states.insert(offset, cell);
+    }
+}
+
+impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
     type Ret = ();
-*/
-    fn visit_instructions(&'a mut self, instr: &mut Vec<Instruction>) {
+
+    fn visit_instructions(&mut self, instr: &mut Vec<Instruction>) {
         for inst in instr {
             self.walk_instruction(inst);
         }
@@ -58,77 +61,67 @@ impl<'a> ir::MutVisitor<'a> for DfgOptimizer<'a> {
     #[allow(unused_variables)]
     fn visit_add(&mut self, add: &mut Instruction) {
         if let Instruction::Add{ offset, value } = add {
-            let s: &'a _ = self;
-            let cell = s.get_cell(*offset);
+            let cell = self.get_cell(*offset);
             let adder = self.arena.alloc(DfgNode::Const(*value));
             let addition = self.arena.alloc(DfgNode::Add(cell, adder));
+            self.set_cell(*offset, addition);
         }
     }
 
     #[allow(unused_variables)]
-    fn visit_set(&'a self, set: &mut Instruction) {
+    fn visit_set(&mut self, set: &mut Instruction) {
         if let Instruction::Set{ offset, value } = set {
-            let arena: &'a _ = &self.arena;
-            let setter: &'a DfgNode<'a> = arena.alloc(DfgNode::Const(*value));
-            self.cell_states.insert(13, setter);
+            let setter: &'a DfgNode<'a> = self.arena.alloc(DfgNode::Const(*value));
+            self.cell_states.insert(*offset, setter);
         }
     }
 
-    fn visit_linear_loop(&self, _lloop: &'_ mut Instruction) {
-    }
-
-    fn visit_move_ptr(&self, _move_ptr: &'_ mut Instruction) {
-    }
-
-    fn visit_loop(&self, l: &mut Instruction) {
-        if let Instruction::Loop(instrs) = l {
-            let mut increments: BTreeMap<i64, i64> = BTreeMap::new();
-            let mut dirty = false;
-
-            let mut optimizer = DfgOptimizer::new();
-
-            for inst in instrs {
-                optimizer.walk_instruction(inst);
-                if !dirty {
-                    use super::ir::Instruction::*;
-                    match inst {
-                        Add { offset, value } => {
-                            match increments.get_mut(offset) {
-                                Some(v) => *v += *value,
-                                None => { increments.insert(*offset, *value); },
-                            }
-                        },
-                        _ => {
-                            dirty = true;
-                        }
-                    }
+    fn visit_linear_loop(&mut self, lloop: &mut Instruction) {
+        if let Instruction::LinearLoop{ offset, factors } = lloop {
+            let multiplier = self.get_cell(*offset);
+            for (off, fact) in factors {
+                if *fact == 1 {
+                    self.set_cell(*offset + *off, multiplier);
+                }
+                else {
+                    let factor2 = self.arena.alloc(DfgNode::Const(*fact));
+                    let prod = self.arena.alloc(DfgNode::Multiply(multiplier, factor2));
+                    self.set_cell(*offset + *off, prod);
                 }
             }
-
-            if !dirty && increments.get(&0) == Some(&-1) {
-                std::mem::replace(l, Instruction::LinearLoop{ offset: 0, factors: increments });
-            }
-            // set cell at offset 0 to 0
+            self.set_cell(*offset, self.arena.alloc(DfgNode::Const(0)));
         }
     }
 
-    fn visit_read(&self, _read: &'_ mut Instruction) {
+    fn visit_move_ptr(&mut self, move_ptr: &'_ mut Instruction) {
+        if let Instruction::MovePtr(val) = move_ptr {
+            self.cfg.push(DfInstr::MovePtr(*val));
+
+            let mut new_map = BTreeMap::new();
+            for (off, v) in &self.cell_states {
+                new_map.insert(*off - *val, *v);
+            }
+            std::mem::swap(&mut self.cell_states, &mut new_map);
+        }
     }
 
-    fn visit_write(&self, _write: &'_ mut Instruction) {
+    fn visit_loop(&mut self, l: &mut Instruction) {
+        if let Instruction::Loop(instrs) = l {
+            let arena = Arena::new();
+            let mut optimizer = DfgOptimizer::new(&arena);
+            optimizer.visit_instructions(instrs);
+        }
     }
 
-    fn walk_instruction(&mut self, inst: &mut Instruction) {
-        use self::Instruction::*;
-        match inst {
-            Nop => {},
-            Add { offset: _, value: _ } => self.visit_add(inst),
-            Set { offset: _, value: _ } => self.visit_set(inst),
-            LinearLoop { offset: _, factors: _ } => self.visit_linear_loop(inst),
-            MovePtr(_) => self.visit_move_ptr(inst),
-            Loop(_) => self.visit_loop(inst),
-            Read(_) => self.visit_read(inst),
-            Write(_) => self.visit_write(inst),
+    fn visit_read(&mut self, read: &'_ mut Instruction) {
+        if let Instruction::Read(off) = read {
+            self.set_cell(*off, self.arena.alloc(DfgNode::Read()));
+        }
+    }
+
+    fn visit_write(&mut self, write: &'_ mut Instruction) {
+        if let Instruction::Write(off) = write {
+            self.cfg.push(DfInstr::Print(self.get_cell(*off)));
         }
     }
 }

@@ -249,7 +249,7 @@ extern "C" fn putbyte(chr: u8) {
 }
 
 extern "C" fn readbyte() -> u8 {
-    let mut byte: u8 = 0;
+    //let mut byte: u8 = 0;
     //std::io::stdin().read(&mut [byte]).unwrap();
     std::io::stdin().bytes().next().unwrap_or(Ok(0)).unwrap_or(0)
 }
