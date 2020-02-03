@@ -19,7 +19,7 @@ fn eval(dn: &DfgNode) -> String {
             format!("mem[OFF({})]", off)
         },
         DfgNode::Add(a, b) => {
-            format!("({}) + ({})", eval(a), eval(b))
+            format!("{} + {}", eval(a), eval(b))
         },
         DfgNode::Multiply(a, b) => {
             format!("({}) * ({})", eval(a), eval(b))
@@ -33,21 +33,28 @@ fn eval(dn: &DfgNode) -> String {
 pub fn transpile_dfg(dfg: &optimize::DfgOptimizer) -> String {
     let mut formatter = Formatter::new();
     formatter.add_line(r#"#include <stdio.h>
-    #include <stdlib.h>
-    #include <string.h>
-    #include <inttypes.h>
-    
-    #define OFF(X) (ptr + (uint16_t) (X))
-    
-    int main() {
-        uint8_t* mem = (uint8_t*) calloc(0x10000, 1);
-        uint16_t ptr = 0;"#);
-    formatter.indent();
+#include <stdlib.h>
+#include <string.h>
+#include <inttypes.h>
 
-    for &stmt in &dfg.cfg {
+#define OFF(X) (ptr + (uint16_t) (X))
+
+int main() {
+    uint8_t* mem = (uint8_t*) calloc(0x10000, 1);
+    uint16_t ptr = 0;"#);
+    formatter.indent();
+    generate_dfg(&dfg.cfg, &mut formatter);
+    formatter.unindent();
+    formatter.add_line("}");
+
+    formatter.get_code()
+}
+
+fn generate_dfg(cfg: &Vec<DfInstr>, formatter: &mut Formatter) {
+    for stmt in cfg {
         match stmt {
             DfInstr::MovePtr(off) => {
-                formatter.add_line(&format!("ptr += {}", off));
+                formatter.add_line(&format!("ptr += {};", off));
             },
             DfInstr::WriteMem(off, val) => {
                 formatter.add_line(&format!("mem[OFF({})] = {};", off, eval(val)));
@@ -55,17 +62,15 @@ pub fn transpile_dfg(dfg: &optimize::DfgOptimizer) -> String {
             DfInstr::Print(val) => {
                 formatter.add_line(&format!("putchar({});", eval(val)));
             },
-            DfInstr::Loop(val) => {
+            DfInstr::Loop(_val, instrs) => {
                 formatter.add_line("while(mem[OFF(0)]) {");
                 formatter.indent();
-                
+                generate_dfg(&instrs, formatter);
                 formatter.unindent();
                 formatter.add_line("}");
             },
         }
     }
-
-    formatter.get_code()
 }
 
 

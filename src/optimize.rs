@@ -1,7 +1,14 @@
 use std::collections::BTreeMap;
 use super::{ir};
 use super::ir::Instruction;
+use super::ir::MutVisitor;
 use typed_arena::Arena;
+
+pub fn create_dfg<'a>(instrs: &mut Vec<ir::Instruction>, arena: &'a Arena<DfgNode<'a>>) -> DfgOptimizer<'a> {
+    let mut dfg = DfgOptimizer::new(arena);
+    dfg.visit_instructions(instrs);
+    dfg
+}
 
 pub struct DfgOptimizer<'a> {
     arena: &'a Arena<DfgNode<'a>>,
@@ -62,6 +69,10 @@ impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
         for inst in instr {
             self.walk_instruction(inst);
         }
+
+        for (off, cell) in &self.cell_states {
+            self.cfg.push(DfInstr::WriteMem(*off, cell))
+        }
     }
 
     #[allow(unused_variables)]
@@ -113,8 +124,12 @@ impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
 
     fn visit_loop(&mut self, l: &mut Instruction) {
         if let Instruction::Loop(instrs) = l {
-            let arena = Arena::new();
-            let mut optimizer = DfgOptimizer::new(&arena);
+
+            for (off, cell) in &self.cell_states {
+                self.cfg.push(DfInstr::WriteMem(*off, cell))
+            }
+
+            let mut optimizer = DfgOptimizer::new(&self.arena);
             optimizer.visit_instructions(instrs);
             self.cfg.push(DfInstr::Loop(0, optimizer.cfg));
             self.cell_states.clear();
