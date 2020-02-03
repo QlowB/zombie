@@ -21,6 +21,7 @@ pub mod trans;
 
 
 use crate::ir::MutVisitor;
+use typed_arena::Arena;
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -43,8 +44,11 @@ fn main() -> io::Result<()> {
             //println!("{}\n", inst.to_string());
         //}
         //println!("{}", trans::java::transpile(&insts));
-
-        let _code = compile::compile(&insts);
+        let arena = Arena::new();
+        let dfg = optimize::create_dfg(&mut insts, &arena);
+        let c = trans::c::transpile_dfg(&dfg);
+        println!("{}", c);
+        //let _code = compile::compile(&insts);
     }
     else if let Err(msg) = insts {
         println!("error parsing: {}", msg);
