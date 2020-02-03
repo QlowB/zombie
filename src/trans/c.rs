@@ -1,12 +1,71 @@
 
-use super::super::{ir, formatter};
+use super::super::{ir, formatter, optimize};
 
 use ir::Instruction;
 use ir::ConstVisitor;
 use formatter::Formatter;
+use optimize::{DfInstr, DfgNode};
 
 struct CTranspiler {
     pub code_buf: Formatter
+}
+
+fn eval(dn: &DfgNode) -> String {
+    match dn {
+        DfgNode::Const(c) => {
+            format!("{}", c)
+        },
+        DfgNode::Cell(off) => {
+            format!("mem[OFF({})]", off)
+        },
+        DfgNode::Add(a, b) => {
+            format!("({}) + ({})", eval(a), eval(b))
+        },
+        DfgNode::Multiply(a, b) => {
+            format!("({}) * ({})", eval(a), eval(b))
+        },
+        DfgNode::Read() => {
+            format!("getchar()")
+        }
+    }
+}
+
+pub fn transpile_dfg(dfg: &optimize::DfgOptimizer) -> String {
+    let mut formatter = Formatter::new();
+    formatter.add_line(r#"#include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <inttypes.h>
+    
+    #define OFF(X) (ptr + (uint16_t) (X))
+    
+    int main() {
+        uint8_t* mem = (uint8_t*) calloc(0x10000, 1);
+        uint16_t ptr = 0;"#);
+    formatter.indent();
+
+    for &stmt in &dfg.cfg {
+        match stmt {
+            DfInstr::MovePtr(off) => {
+                formatter.add_line(&format!("ptr += {}", off));
+            },
+            DfInstr::WriteMem(off, val) => {
+                formatter.add_line(&format!("mem[OFF({})] = {};", off, eval(val)));
+            },
+            DfInstr::Print(val) => {
+                formatter.add_line(&format!("putchar({});", eval(val)));
+            },
+            DfInstr::Loop(val) => {
+                formatter.add_line("while(mem[OFF(0)]) {");
+                formatter.indent();
+                
+                formatter.unindent();
+                formatter.add_line("}");
+            },
+        }
+    }
+
+    formatter.get_code()
 }
 
 

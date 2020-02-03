@@ -5,8 +5,8 @@ use typed_arena::Arena;
 
 pub struct DfgOptimizer<'a> {
     arena: &'a Arena<DfgNode<'a>>,
-    cell_states: BTreeMap<i64, &'a DfgNode<'a>>,
-    cfg: Vec<DfInstr<'a>>,
+    pub cell_states: BTreeMap<i64, &'a DfgNode<'a>>,
+    pub cfg: Vec<DfInstr<'a>>,
 }
 
 pub enum DfgNode<'a> {
@@ -110,6 +110,9 @@ impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
             let arena = Arena::new();
             let mut optimizer = DfgOptimizer::new(&arena);
             optimizer.visit_instructions(instrs);
+            self.cfg.push(DfInstr::Loop(0, optimizer.cfg));
+            self.cell_states.clear();
+            self.set_cell(0, self.arena.alloc(DfgNode::Const(0)));
         }
     }
 
