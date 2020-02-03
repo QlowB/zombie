@@ -9,6 +9,12 @@ pub struct DfgOptimizer<'a> {
     pub cfg: Vec<DfInstr<'a>>,
 }
 
+pub struct BasicBlock<'a> {
+    arena: &'a Arena<DfgNode<'a>>,
+    pub cell_states: BTreeMap<i64, &'a DfgNode<'a>>,
+    pub cfg: Vec<DfInstr<'a>>,
+}
+
 pub enum DfgNode<'a> {
     Cell(i64),
     Const(i64),
