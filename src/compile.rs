@@ -4,10 +4,6 @@ use std::io::{Write, Read};
 use std::mem;
 use super::ir::{ConstVisitor, Instruction};
 
-#[cfg(target_os = "windows")]
-use winapi::um::memoryapi::VirtualAlloc;
-#[cfg(target_os = "windows")]
-use winapi::um::winnt::{MEM_COMMIT, PAGE_EXECUTE_READWRITE};
 use dynasmrt::{DynasmApi, DynasmLabelApi};
 
 pub enum Storation {
@@ -27,7 +23,7 @@ pub fn compile(instrs: &Vec<ir::Instruction>) -> Vec<u8> {
     let entry = cg.buffer.offset();
 
     cg.visit_instructions(instrs);
-    cg.buffer.commit();
+    let _committed = cg.buffer.commit();
     cg.finalize();
     let buf = cg.buffer.finalize().unwrap();
 
@@ -42,7 +38,10 @@ pub fn compile(instrs: &Vec<ir::Instruction>) -> Vec<u8> {
     //let mut data: Vec<u8> = Vec::with_capacity(100000);
     unsafe {
         //function(&mut *data.into_boxed_slice().as_mut_ptr() as *mut u8);
-        function(std::alloc::alloc_zeroed(std::alloc::Layout::new::<[u8; 100000]>()));
+        let layout = std::alloc::Layout::new::<[u8; 0x10000]>();
+        let mem = std::alloc::alloc_zeroed(layout);
+        function(mem.offset(0x08000));
+        std::alloc::dealloc(mem, layout);
     }
 
     //cg.into_vec()
@@ -73,7 +72,7 @@ impl CodeGenerator {
         );
     }
 
-    #[cfg(target_os = "windows")]
+    /*#[cfg(target_os = "windows")]
     pub fn get_callable(self) -> *const u8 {
         let data = self.buffer.finalize().unwrap().to_vec();
         println!("asm buffer of size {}", data.len());
@@ -86,7 +85,7 @@ impl CodeGenerator {
 
     #[cfg(not(target_os = "windows"))]
     pub fn get_callable(self) {
-    }
+    }*/
 }
 
 impl ir::ConstVisitor for CodeGenerator {

@@ -18,7 +18,7 @@ fn generate(formatter: &mut Formatter, instrs: &Vec<Instruction>) {
                 formatter.add_line(&format!("@{} += {}", offset, value));
             },
             Instruction::Set{ offset, value } => {
-                formatter.add_line(&format!("@{} = {})", offset, value));
+                formatter.add_line(&format!("@{} = {}", offset, value));
             },
             Instruction::LinearLoop{ offset, factors } => {
                 for (off, factor) in factors {

@@ -9,8 +9,8 @@ edition = "2018"
 #[dependencies.x86asm]
 #path = "rust-x86asm"
 [dependencies]
-dynasm = "0.5.2"
-dynasmrt = "0.5.2"
+dynasm = "1.0.1"
+dynasmrt = "1.0.1"
 winapi = "*"
 typed-arena = "1.4.1"
 clap = "2.33.3"

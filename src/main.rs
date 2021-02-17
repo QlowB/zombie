@@ -63,8 +63,8 @@ fn main() -> io::Result<()> {
         
         match matches.value_of("transpile") {
             Some(lang) => {
-                let arena = Arena::new();
-                let dfg = optimize::create_dfg(&mut insts, &arena);
+                //let arena = Arena::new();
+                //let dfg = optimize::create_dfg(&mut insts, &arena);
                 let code = if lang == "c" {
                     //trans::c::transpile_dfg(&dfg)
                     trans::c::transpile(&insts)
