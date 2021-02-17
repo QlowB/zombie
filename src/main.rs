@@ -70,6 +70,8 @@ fn main() -> io::Result<()> {
                     trans::c::transpile(&insts)
                 } else if lang == "java" {
                     trans::java::transpile(&insts)
+                } else if lang == "python" {
+                    trans::python::transpile(&insts)
                 } else if lang == "zombie_ir" {
                     trans::zombie_ir::transpile(&insts)
                 } else {
