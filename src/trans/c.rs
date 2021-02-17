@@ -37,7 +37,7 @@ pub fn transpile_dfg(dfg: &optimize::DfgOptimizer) -> String {
 #include <string.h>
 #include <inttypes.h>
 
-#define OFF(X) (ptr + (uint16_t) (X))
+#define OFF(X) ((uint16_t)(ptr + (uint16_t) (X)))
 
 int main() {
     uint8_t* mem = (uint8_t*) calloc(0x10000, 1);
@@ -51,18 +51,34 @@ int main() {
 }
 
 fn generate_dfg(cfg: &Vec<DfInstr>, formatter: &mut Formatter) {
+    let mut memoffs: Vec<(i64, u64)> = Vec::new();
+    let mut tmp_counter: u64 = 0;
+    let offset_creator = |o: i64| {
+        if o < 0 {
+            format!("minus_{}", -o)
+        }
+        else {
+            format!("{}", o)
+        }
+    };
     for stmt in cfg {
         match stmt {
             DfInstr::MovePtr(off) => {
                 formatter.add_line(&format!("ptr += {};", off));
             },
             DfInstr::WriteMem(off, val) => {
-                formatter.add_line(&format!("mem[OFF({})] = {};", off, eval(val)));
+                formatter.add_line(&format!("uint8_t tmp_{} = {};", tmp_counter, eval(val)));
+                memoffs.push((*off, tmp_counter));
+                tmp_counter += 1;
             },
             DfInstr::Print(val) => {
                 formatter.add_line(&format!("putchar({});", eval(val)));
             },
             DfInstr::Loop(_val, instrs) => {
+                for (off, tmp) in &memoffs {
+                    formatter.add_line(&format!("mem[OFF({})] = tmp_{};", *off, *tmp));
+                }
+                memoffs.clear();
                 formatter.add_line("while(mem[OFF(0)]) {");
                 formatter.indent();
                 generate_dfg(&instrs, formatter);
@@ -70,6 +86,9 @@ fn generate_dfg(cfg: &Vec<DfInstr>, formatter: &mut Formatter) {
                 formatter.add_line("}");
             },
         }
+    }
+    for (off, tmp) in memoffs {
+        formatter.add_line(&format!("mem[OFF({})] = tmp_{};", off, tmp));
     }
 }
 
@@ -91,10 +110,11 @@ impl Default for CTranspiler {
 #include <string.h>
 #include <inttypes.h>
 
-#define OFF(X) (ptr + (uint16_t) (X))
+#define OFF(X) ((uint16_t)(ptr + (uint16_t) (X)))
 
 int main() {
-    uint8_t* mem = (uint8_t*) calloc(0x10000, 1);
+    uint8_t* mem = (uint8_t*) malloc(0x10000 * sizeof(uint8_t));
+    memset(mem, 0, 0x10000 * sizeof(uint8_t));
     uint16_t ptr = 0;"#);
         transpiler.code_buf.indent();
         transpiler

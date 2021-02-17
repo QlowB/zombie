@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import os
 from timeit import default_timer as timer
@@ -16,7 +16,7 @@ for i in range(1, nTries):
     tries.append((end - start) * 1000)
 
 
-print("benchmark for commit: " + check_output(["git", "rev-parse", "HEAD"]))
+print("benchmark for commit: " + str(check_output(["git", "rev-parse", "HEAD"])))
 print(str(nTries) + " tries were run")
 print("")
 print("average time [ms]: " + str(np.mean(tries)))

@@ -283,6 +283,7 @@ impl ir::MutVisitor for LinOptimizer {
             }
             else if !dirty && increments.get(&0) == Some(&-1) {
                 self.offset = offset_before;
+                increments.remove(&0);
                 self.instructions.push(Instruction::LinearLoop{ offset: self.offset, factors: increments });
             }
             else {
