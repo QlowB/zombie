@@ -4,13 +4,16 @@
 #[macro_use]
 extern crate dynasm;
 
-extern crate winapi;
+//extern crate winapi;
 extern crate typed_arena;
 
 use std::io::{self, Read};
 use std::fs::File;
 use clap::{Arg, App};
+use std::str::FromStr;
+use std::process::exit;
 
+pub mod options;
 pub mod ir;
 pub mod parser;
 pub mod interpret;
@@ -29,22 +32,38 @@ fn main() -> io::Result<()> {
         .author("Nicolas Winkler <nicolas.winkler@gmx.ch>")
         .about("Brainfuck interpreter and transpiler")
         .arg(Arg::with_name("input")
-                 .index(1)
-                 .takes_value(true)
-                 .help("Input file"))
+                .takes_value(true)
+                .help("Input file"))
         .arg(Arg::with_name("transpile")
-                 .long("transpile")
-                 .short("t")
-                 .takes_value(true)
-                 .help("Transpile to language"))
+                .long("transpile")
+                .short("t")
+                .takes_value(true)
+                .help("Transpile to language"))
+        .arg(Arg::with_name("cell size")
+                .long("cell-size")
+                .short("c")
+                .takes_value(true)
+                .help("defines the cell size used"))
         .get_matches();
+    
     let mut buffer = String::new();
-
     if let Some(input) = matches.value_of("input") {
         File::open(&input)?.read_to_string(&mut buffer)?;
     }
     else {
         io::stdin().read_to_string(&mut buffer)?;
+    }
+
+    let mut options = options::Options::default();
+
+    if let Some(cell_size) = matches.value_of("cell size") {
+        match options::CellSize::from_str(cell_size) {
+            Ok(cs) => options.cell_size = cs,
+            Err(e) => {
+                eprintln!("invalid cell size '{}'", cell_size);
+                exit(1);
+            }
+        }
     }
 
     let insts = parser::parse(&buffer);
@@ -67,7 +86,7 @@ fn main() -> io::Result<()> {
                 //let dfg = optimize::create_dfg(&mut insts, &arena);
                 let code = if lang == "c" {
                     //trans::c::transpile_dfg(&dfg)
-                    trans::c::transpile(&insts)
+                    trans::c::transpile(&options, &insts)
                 } else if lang == "java" {
                     trans::java::transpile(&insts)
                 } else if lang == "python" {
@@ -75,6 +94,7 @@ fn main() -> io::Result<()> {
                 } else if lang == "zombie_ir" {
                     trans::zombie_ir::transpile(&insts)
                 } else {
+                    eprintln!("invalid transpiler lang '{}'", lang);
                     "".to_owned()
                 };
                 println!("{}", code);

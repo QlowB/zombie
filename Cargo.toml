@@ -11,6 +11,5 @@ edition = "2018"
 [dependencies]
 dynasm = "1.0.1"
 dynasmrt = "1.0.1"
-winapi = "*"
 typed-arena = "1.4.1"
 clap = "2.33.3"

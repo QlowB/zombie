@@ -3,6 +3,12 @@ use super::{ir, optimize};
 use std::io::{Write, Read};
 use std::mem;
 use super::ir::{ConstVisitor, Instruction};
+//use mmap::{MemoryMap, MapOption};
+
+/*#[cfg(target_os = "windows")]
+use kernel32::VirtualAlloc;
+#[cfg(target_os = "windows")]
+use winapi::um::winnt::{MEM_COMMIT, PAGE_EXECUTE_READWRITE};*/
 
 use dynasmrt::{DynasmApi, DynasmLabelApi};
 
@@ -76,7 +82,22 @@ impl CodeGenerator {
     pub fn get_callable(self) -> *const u8 {
         let data = self.buffer.finalize().unwrap().to_vec();
         println!("asm buffer of size {}", data.len());
-        let ex = unsafe { VirtualAlloc(0 as _, data.len(), MEM_COMMIT, PAGE_EXECUTE_READWRITE) };
+        //let ex = unsafe { VirtualAlloc(0 as _, data.len(), MEM_COMMIT, PAGE_EXECUTE_READWRITE) };
+        let ex = unsafe {
+            MemoryMap::new(
+                data.len(),
+                &[
+                    MapOption::MapAddr(0 as *mut u8),
+                    MapOption::MapOffset(0),
+                    MapOption::MapFd(-1),
+                    MapOption::MapReadable,
+                    MapOption::MapWritable,
+                    MapOption::MapExecutable,
+                    MapOption::MapNonStandardFlags(libc::MAP_ANON),
+                    MapOption::MapNonStandardFlags(libc::MAP_PRIVATE),
+                ]
+            )
+        };
         unsafe {
             std::ptr::copy_nonoverlapping(data.as_ptr(), ex as _, data.len());
         }

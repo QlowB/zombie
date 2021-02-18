@@ -231,5 +231,4 @@ dependencies = [
  "dynasm",
  "dynasmrt",
  "typed-arena",
- "winapi",
 ]

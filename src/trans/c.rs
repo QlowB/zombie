@@ -1,10 +1,11 @@
 
-use super::super::{ir, formatter, optimize};
+use super::super::{ir, formatter, optimize, options};
 
 use ir::Instruction;
 use ir::ConstVisitor;
 use formatter::Formatter;
 use optimize::{DfInstr, DfgNode};
+use options::*;
 
 struct CTranspiler {
     pub code_buf: Formatter
@@ -93,29 +94,37 @@ fn generate_dfg(cfg: &Vec<DfInstr>, formatter: &mut Formatter) {
 }
 
 
-pub fn transpile(instrs: &Vec<ir::Instruction>) -> String {
-    let mut transpiler = CTranspiler::default();
+pub fn transpile(opts: &Options, instrs: &Vec<ir::Instruction>) -> String {
+    let mut transpiler = CTranspiler::create(opts);
     transpiler.visit_instructions(instrs);
     transpiler.finalize();
     return transpiler.code_buf.get_code();
 }
 
 
-impl Default for CTranspiler {
-    fn default() -> Self {
+impl CTranspiler {
+    fn create(opts: &Options) -> Self {
         let mut transpiler = CTranspiler{ code_buf: Formatter::new() };
 
-        transpiler.code_buf.add_line(r#"#include <stdio.h>
+        let cell_type = match opts.cell_size {
+            CellSize::Int8 => "uint8_t",
+            CellSize::Int16 => "uint16_t",
+            CellSize::Int32 => "uint32_t",
+            CellSize::Int => "uint64_t"
+        };
+
+
+        transpiler.code_buf.add_line(&format!(r#"#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
 
 #define OFF(X) ((uint16_t)(ptr + (uint16_t) (X)))
 
-int main() {
-    uint8_t* mem = (uint8_t*) malloc(0x10000 * sizeof(uint8_t));
-    memset(mem, 0, 0x10000 * sizeof(uint8_t));
-    uint16_t ptr = 0;"#);
+int main() {{
+    {ct}* mem = ({ct}*) malloc(0x10000 * sizeof({ct}));
+    memset(mem, 0, 0x10000 * sizeof({ct}));
+    uint16_t ptr = 0;"#, ct = cell_type));
         transpiler.code_buf.indent();
         transpiler
     }
