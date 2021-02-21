@@ -2,15 +2,17 @@ use super::ir::Instruction;
 use std::io::Read;
 use std::io::Write;
 use std::io;
+use std::ops::{Add, Mul, Sub};
+use std::num::Wrapping;
 
-struct Data<T> {
+struct Data<T: Add + Mul + Sub + Eq + From<i64>> {
     memory: Vec<T>,
     ptr: i64,
 }
 
 pub fn run(instructions: &Vec<Instruction>) {
     let len = 1024;
-    let mut data = Data<u8> {
+    let mut data = Data<Wrapping<u8>> {
         memory: vec![0; len],
         ptr: 0,
     };
@@ -18,24 +20,24 @@ pub fn run(instructions: &Vec<Instruction>) {
     run_instrs(instructions, &mut data);
 }
 
-fn run_instrs<T>(instructions: &Vec<Instruction>, data: &mut Data<T>) {
+fn run_instrs<T: Add + Mul + Sub + Eq + From<i64>>(instructions: &Vec<Instruction>, data: &mut Data<T>) {
     let len = data.memory.len();
     for inst in instructions {
         match inst {
             Instruction::Nop => {},
             Instruction::Add{ offset, value } => {
                 let cell = &mut data.memory[(data.ptr + offset) as usize % len];
-                *cell = cell.wrapping_add(*value as u8);
+                *cell = *cell + T::from(*value);
             },
             Instruction::Set{ offset, value } => {
                 let cell = &mut data.memory[(data.ptr + offset) as usize % len];
-                *cell = *value as u8;
+                *cell = T::from(*value);
             },
             Instruction::MovePtr(offset) => {
                 data.ptr = data.ptr.wrapping_add(*offset);
             },
             Instruction::Loop(instrs) => {
-                while data.memory[data.ptr as usize % len] != 0 {
+                while data.memory[data.ptr as usize % len] != T::from(0) {
                     run_instrs(instrs, data);
                 }
             },
@@ -53,7 +55,7 @@ fn run_instrs<T>(instructions: &Vec<Instruction>, data: &mut Data<T>) {
                 let multiplicator = data.memory[((data.ptr + glob_offset) as usize) % len];
                 for (offset, value) in factors {
                     let cell = &mut data.memory[(data.ptr + offset + glob_offset) as usize % len];
-                    *cell = cell.wrapping_add(multiplicator.wrapping_mul(*value as u8));
+                    *cell = cell + (multiplicator * (*value as _));
                 }
             },
         }
