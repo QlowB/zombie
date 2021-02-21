@@ -1,16 +1,26 @@
-use super::super::{ir, formatter};
+use super::super::{ir, formatter, options};
 
 use ir::Instruction;
 use formatter::Formatter;
+use options::*;
 
-pub fn transpile(instrs: &Vec<ir::Instruction>) -> String {
+pub fn transpile(opts: &Options, instrs: &Vec<ir::Instruction>) -> String {
     let mut formatter = Formatter::new();
+
+
+    let cell_type = match opts.cell_size {
+        CellSize::Bits(8) => "byte",
+        CellSize::Bits(16) => "short",
+        CellSize::Bits(32) => "int",
+        CellSize::Int => "long",
+        _ => "long"
+    };
 
     formatter.add_line("class Brainfuck {");
     formatter.indent();
     formatter.add_line("public static void main(String[] args) {");
     formatter.indent();
-    formatter.add_line("byte[] mem = new byte[0x10000];");
+    formatter.add_line(&format!("{ct}[] mem = new {ct}[0x10000];", ct = cell_type));
     formatter.add_line("int ptr = 0;");
     formatter.add_line("");
 

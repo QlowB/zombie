@@ -2,14 +2,14 @@ use std::str::FromStr;
 
 pub enum CellLayout {
     Trusting,
-    Wrapping
+    Wrapping,
+    Unbounded
 }
 
 
 pub enum CellSize {
-    Int8,
-    Int16,
-    Int32,
+    Bits(usize),
+    Modular(usize),
     Int
 }
 
@@ -26,7 +26,7 @@ impl Default for Options {
         Options {
             cell_layout: CellLayout::Trusting,
             memory_size: 0x10000,
-            cell_size: CellSize::Int8,
+            cell_size: CellSize::Bits(8),
         }
     }
 }
@@ -47,12 +47,16 @@ impl FromStr for CellSize {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "8" => Ok(CellSize::Int8),
-            "16" => Ok(CellSize::Int16),
-            "32" => Ok(CellSize::Int32),
-            "int" => Ok(CellSize::Int),
-            _ => Err("invalid cell size"),
+        let integer = s.parse::<usize>();
+        match integer {
+            Ok(i) => Ok(CellSize::Bits(i)),
+            Err(e) => match s {
+                "8" => Ok(CellSize::Bits(8)),
+                "16" => Ok(CellSize::Bits(16)),
+                "32" => Ok(CellSize::Bits(16)),
+                "int" => Ok(CellSize::Int),
+                _ => Err("invalid cell size"),
+            }
         }
     }
 }

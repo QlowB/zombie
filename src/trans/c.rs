@@ -107,10 +107,10 @@ impl CTranspiler {
         let mut transpiler = CTranspiler{ code_buf: Formatter::new() };
 
         let cell_type = match opts.cell_size {
-            CellSize::Int8 => "uint8_t",
-            CellSize::Int16 => "uint16_t",
-            CellSize::Int32 => "uint32_t",
-            CellSize::Int => "uint64_t"
+            CellSize::Bits(8) => "uint8_t",
+            CellSize::Bits(16) => "uint16_t",
+            CellSize::Bits(32) => "uint32_t",
+            _ => "uint64_t"
         };
 
 

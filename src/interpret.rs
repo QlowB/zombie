@@ -3,14 +3,14 @@ use std::io::Read;
 use std::io::Write;
 use std::io;
 
-struct Data {
-    memory: Vec<u8>,
+struct Data<T> {
+    memory: Vec<T>,
     ptr: i64,
 }
 
 pub fn run(instructions: &Vec<Instruction>) {
     let len = 1024;
-    let mut data = Data {
+    let mut data = Data<u8> {
         memory: vec![0; len],
         ptr: 0,
     };
@@ -18,7 +18,7 @@ pub fn run(instructions: &Vec<Instruction>) {
     run_instrs(instructions, &mut data);
 }
 
-fn run_instrs(instructions: &Vec<Instruction>, data: &mut Data) {
+fn run_instrs<T>(instructions: &Vec<Instruction>, data: &mut Data<T>) {
     let len = data.memory.len();
     for inst in instructions {
         match inst {

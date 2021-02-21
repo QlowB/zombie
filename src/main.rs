@@ -88,9 +88,9 @@ fn main() -> io::Result<()> {
                     //trans::c::transpile_dfg(&dfg)
                     trans::c::transpile(&options, &insts)
                 } else if lang == "java" {
-                    trans::java::transpile(&insts)
+                    trans::java::transpile(&options, &insts)
                 } else if lang == "python" {
-                    trans::python::transpile(&insts)
+                    trans::python::transpile(&options, &insts)
                 } else if lang == "zombie_ir" {
                     trans::zombie_ir::transpile(&insts)
                 } else {
