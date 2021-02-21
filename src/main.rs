@@ -34,6 +34,10 @@ fn main() -> io::Result<()> {
         .arg(Arg::with_name("input")
                 .takes_value(true)
                 .help("Input file"))
+        .arg(Arg::with_name("interpret")
+                .long("interpret")
+                .short("i")
+                .help("No JIT, run only simple interpreter"))
         .arg(Arg::with_name("transpile")
                 .long("transpile")
                 .short("t")
@@ -43,7 +47,12 @@ fn main() -> io::Result<()> {
                 .long("cell-size")
                 .short("c")
                 .takes_value(true)
-                .help("defines the cell size used"))
+                .help("defines the cell size in bits"))
+        .arg(Arg::with_name("cell modulus")
+                .long("cell-modulus")
+                .short("m")
+                .takes_value(true)
+                .help("defines the cell modulus"))
         .get_matches();
     
     let mut buffer = String::new();
@@ -59,8 +68,17 @@ fn main() -> io::Result<()> {
     if let Some(cell_size) = matches.value_of("cell size") {
         match options::CellSize::from_str(cell_size) {
             Ok(cs) => options.cell_size = cs,
-            Err(e) => {
+            Err(_e) => {
                 eprintln!("invalid cell size '{}'", cell_size);
+                exit(1);
+            }
+        }
+    }
+    else if let Some(cell_modulus) = matches.value_of("cell modulus") {
+        match u64::from_str(cell_modulus) {
+            Ok(cs) => options.cell_size = options::CellSize::Modular(cs),
+            Err(_e) => {
+                eprintln!("invalid cell modulus '{}'", cell_modulus);
                 exit(1);
             }
         }
@@ -72,35 +90,41 @@ fn main() -> io::Result<()> {
         lin_loop_optimizer.visit_instructions(&mut insts);
         let _ = std::mem::replace(&mut insts, lin_loop_optimizer.instructions);
         
-        //for ref inst in &insts {
-            //println!("{}\n", inst.to_string());
-        //}
-        //println!("{}", trans::java::transpile(&insts));
-        //let c = trans::c::transpile_dfg(&dfg);
-        //println!("{}", c);
-        //println!("{}", trans::java::transpile(&insts));
-        
-        match matches.value_of("transpile") {
-            Some(lang) => {
-                //let arena = Arena::new();
-                //let dfg = optimize::create_dfg(&mut insts, &arena);
-                let code = if lang == "c" {
-                    //trans::c::transpile_dfg(&dfg)
-                    trans::c::transpile(&options, &insts)
-                } else if lang == "java" {
-                    trans::java::transpile(&options, &insts)
-                } else if lang == "python" {
-                    trans::python::transpile(&options, &insts)
-                } else if lang == "zombie_ir" {
-                    trans::zombie_ir::transpile(&insts)
-                } else {
-                    eprintln!("invalid transpiler lang '{}'", lang);
-                    "".to_owned()
-                };
-                println!("{}", code);
-            },
-            None => {
-                let _code = compile::compile(&insts);
+
+        if matches.is_present("interpret") {
+            interpret::run(&insts, &options);
+        }
+        else {
+            //for ref inst in &insts {
+                //println!("{}\n", inst.to_string());
+            //}
+            //println!("{}", trans::java::transpile(&insts));
+            //let c = trans::c::transpile_dfg(&dfg);
+            //println!("{}", c);
+            //println!("{}", trans::java::transpile(&insts));
+            
+            match matches.value_of("transpile") {
+                Some(lang) => {
+                    //let arena = Arena::new();
+                    //let dfg = optimize::create_dfg(&mut insts, &arena);
+                    let code = if lang == "c" {
+                        //trans::c::transpile_dfg(&dfg)
+                        trans::c::transpile(&options, &insts)
+                    } else if lang == "java" {
+                        trans::java::transpile(&options, &insts)
+                    } else if lang == "python" {
+                        trans::python::transpile(&options, &insts)
+                    } else if lang == "zombie_ir" {
+                        trans::zombie_ir::transpile(&insts)
+                    } else {
+                        eprintln!("invalid transpiler lang '{}'", lang);
+                        "".to_owned()
+                    };
+                    println!("{}", code);
+                },
+                None => {
+                    let _code = compile::compile(&insts);
+                }
             }
         }
     }

@@ -1,15 +1,16 @@
 use std::str::FromStr;
 
+#[derive(PartialEq, Clone)]
 pub enum CellLayout {
     Trusting,
     Wrapping,
     Unbounded
 }
 
-
+#[derive(PartialEq, Clone)]
 pub enum CellSize {
     Bits(usize),
-    Modular(usize),
+    Modular(u64),
     Int
 }
 
