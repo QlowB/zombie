@@ -126,95 +126,27 @@ impl<'a> ir::ConstVisitor for CodeGenerator<'a> {
 
     fn visit_add(&mut self, add: &'_ Instruction) {
         if let Instruction::Add{ offset, value } = add {
-            match self.opts.cell_size {
-                CellSize::Bits(8) => {
-                    dynasm!(self.buffer
-                        ; add BYTE [rdi + *offset as i32], *value as i8
-                    );
-                },
-                CellSize::Bits(16) => {
-                    dynasm!(self.buffer
-                        ; add WORD [rdi + *offset as i32], *value as i16
-                    );
-                },
-                CellSize::Bits(32) => {
-                    dynasm!(self.buffer
-                        ; add DWORD [rdi + *offset as i32], *value as i32
-                    );
-                },
-                CellSize::Bits(64) => {
-                    if *value > i32::MAX as _ || *value < i32::MIN as _ {
-                        dynasm!(self.buffer
-                            ; mov rcx, QWORD *value
-                            ; add QWORD [rdi + *offset as i32], rcx
-                        );
-                    }
-                    else {
-                        dynasm!(self.buffer
-                            ; add QWORD [rdi + *offset as i32], *value as i32
-                        );
-                    }
-                },
-                _ => {}
-            }
+            dynasm!(self.buffer
+                ; add BYTE [rdi + *offset as i32], *value as i8
+            );
+
         }
     }
 
     fn visit_set(&mut self, set: &'_ Instruction) {
         if let Instruction::Set{ offset, value } = set {
-            match self.opts.cell_size {
-                CellSize::Bits(8) => {
-                    dynasm!(self.buffer
-                        ; mov BYTE [rdi + *offset as i32], *value as i8
-                    );
-                },
-                CellSize::Bits(16) => {
-                    dynasm!(self.buffer
-                        ; mov WORD [rdi + *offset as i32], *value as i16
-                    );
-                },
-                CellSize::Bits(32) => {
-                    dynasm!(self.buffer
-                        ; mov DWORD [rdi + *offset as i32], *value as i32
-                    );
-                },
-                CellSize::Bits(64) => {
-                    dynasm!(self.buffer
-                        ; mov rcx, QWORD *value
-                        ; mov QWORD [rdi + *offset as i32], rcx
-                    );
-                },
-                _ => {}
-            }
+            dynasm!(self.buffer
+                ; mov BYTE [rdi + *offset as i32], *value as i8
+            );
         }
     }
 
     fn visit_linear_loop(&mut self, l: &Instruction) {
         if let Instruction::LinearLoop{ offset: glob_offset, factors } = l {
             if factors.len() > 0 {
-                match self.opts.cell_size {
-                    CellSize::Bits(8) => {
-                        dynasm!(self.buffer
-                            ; movzx rcx, BYTE [rdi + *glob_offset as i32]
-                        );
-                    },
-                    CellSize::Bits(16) => {
-                        dynasm!(self.buffer
-                            ; movzx rcx, WORD [rdi + 2 * *glob_offset as i32]
-                        );
-                    },
-                    CellSize::Bits(32) => {
-                        dynasm!(self.buffer
-                            ; mov ecx, DWORD [rdi + 4 * *glob_offset as i32]
-                        );
-                    },
-                    CellSize::Bits(64) => {
-                        dynasm!(self.buffer
-                            ; mov rcx, QWORD [rdi + 8 * *glob_offset as i32]
-                        );
-                    },
-                    _ => {}
-                }
+                dynasm!(self.buffer
+                    ; movzx rcx, BYTE [rdi + *glob_offset as i32]
+                );
             }
             for (&offset, &factor) in factors {
                 if offset == 0 {
@@ -222,128 +154,93 @@ impl<'a> ir::ConstVisitor for CodeGenerator<'a> {
                 }
 
                 let absoff = offset + glob_offset;
-
-                
-                match self.opts.cell_size {
-                    CellSize::Bits(8) => {
-                        if factor == 0 {
-                        }
-                        else if factor == 1 {
-                            dynasm!(self.buffer
-                                ; add BYTE [rdi + absoff as i32], cl
-                            );
-                        }
-                        else if factor == -1 {
-                            dynasm!(self.buffer
-                                ; sub BYTE [rdi + absoff as i32], cl
-                            );
-                        }
-                        else if factor == 2 {
-                            dynasm!(self.buffer
-                                ; lea ebx, [rcx + rcx]
-                                ; add BYTE [rdi + absoff as i32], bl
-                            );
-                        }
-                        else if factor == 3 {
-                            dynasm!(self.buffer
-                                ; lea ebx, [rcx + rcx * 2]
-                                ; add BYTE [rdi + absoff as i32], bl
-                            );
-                        }
-                        else if factor == 5 {
-                            dynasm!(self.buffer
-                                ; lea ebx, [rcx + rcx * 4]
-                                ; add BYTE [rdi + absoff as i32], bl
-                            );
-                        }
-                        else if factor == 7 {
-                            dynasm!(self.buffer
-                                ; lea ebx, [0 + rcx * 8]
-                                ; sub ebx, ecx
-                                ; add BYTE [rdi + absoff as i32], bl
-                            );
-                        }
-                        else if factor == 9 {
-                            dynasm!(self.buffer
-                                ; lea ebx, [rcx + rcx * 8]
-                                ; add BYTE [rdi + absoff as i32], bl
-                            );
-                        }
-                        else if factor.count_ones() == 1 {
-                            dynasm!(self.buffer
-                                ; mov bl, cl
-                                ; shl bl, factor.trailing_zeros() as i8
-                                ; add BYTE [rdi + absoff as i32], bl
-                            );
-                        }
-                        else if (-factor).count_ones() == 1 {
-                            dynasm!(self.buffer
-                                ; mov bl, cl
-                                ; shl bl, factor.trailing_zeros() as i8
-                                ; sub BYTE [rdi + absoff as i32], bl
-                            );
-                        }
-                        else {
-                            dynasm!(self.buffer
-                                //; mov al, factor as i8
-                                ; imul eax, ecx, factor as _
-                                ; add al, BYTE [rdi + absoff as i32]
-                                ; mov BYTE [rdi + absoff as i32], al
-                            );
-                        }
-                    },
-                    CellSize::Bits(16) => {
-                        dynasm!(self.buffer
-                            ; imul eax, ecx, factor as _
-                            ; add ax, WORD [rdi + 2 * absoff as i32]
-                            ; mov WORD [rdi + 2 * absoff as i32], ax
-                        );
-                    },
-                    CellSize::Bits(32) => {
-                        dynasm!(self.buffer
-                            ; imul rax, rcx, factor as _
-                            ; add eax, DWORD [rdi + 4 * absoff as i32]
-                            ; mov DWORD [rdi + 4 * absoff as i32], eax
-                        );
-                    },
-                    CellSize::Bits(64) => {
-                        dynasm!(self.buffer
-                            ; imul rax, rcx, factor as _
-                            ; add rax, QWORD [rdi + 8 * absoff as i32]
-                            ; mov QWORD [rdi + 8 * absoff as i32], rax
-                        );
-                    },
-                    _ => {}
+                if factor == 0 {
+                }
+                else if factor == 1 {
+                    //println!("add BYTE [rdi + {}], cl", absoff as i32);
+                    dynasm!(self.buffer
+                        ; add BYTE [rdi + absoff as i32], cl
+                    );
+                }
+                else if factor == -1 {
+                    //println!("sub BYTE [rdi + {}], cl", absoff as i32);
+                    dynasm!(self.buffer
+                        ; sub BYTE [rdi + absoff as i32], cl
+                    );
+                }
+                /*else if factor == 2 {
+                    //println!("; some ins (factor = {})", factor);
+                    dynasm!(self.buffer
+                        ; lea ebx, [rcx + rcx]
+                        ; add BYTE [rdi + absoff as i32], bl
+                    );
+                }*/
+                else if factor == 3 {
+                    //println!("; some ins (factor = {})", factor);
+                    dynasm!(self.buffer
+                        ; lea ebx, [rcx + rcx * 2]
+                        ; add BYTE [rdi + absoff as i32], bl
+                    );
+                }
+                else if factor == 5 {
+                    //println!("; some ins (factor = {})", factor);
+                    dynasm!(self.buffer
+                        ; lea ebx, [rcx + rcx * 4]
+                        ; add BYTE [rdi + absoff as i32], bl
+                    );
+                }
+                /*else if factor == 7 {
+                    //println!("; some ins (factor = {})", factor);
+                    dynasm!(self.buffer
+                        ; lea ebx, [0 + rcx * 8]
+                        ; sub ebx, ecx
+                        ; add BYTE [rdi + absoff as i32], bl
+                    );
+                }*/
+                else if factor == 9 {
+                    //println!("; some ins (factor = {})", factor);
+                    dynasm!(self.buffer
+                        ; lea ebx, [rcx + rcx * 8]
+                        ; add BYTE [rdi + absoff as i32], bl
+                    );
+                }
+                else if factor.count_ones() == 1 {
+                    //println!("; some ins (factor = {})", factor);
+                    dynasm!(self.buffer
+                        ; mov bl, cl
+                        ; shl bl, factor.trailing_zeros() as i8
+                        ; add BYTE [rdi + absoff as i32], bl
+                    );
+                }
+                else if (-factor).count_ones() == 1 {
+                    //println!("; some ins (factor = {})", factor);
+                    dynasm!(self.buffer
+                        ; mov bl, cl
+                        ; shl bl, factor.trailing_zeros() as i8
+                        ; sub BYTE [rdi + absoff as i32], bl
+                    );
+                }
+                else {
+                    //println!("; some ins (factor = {})", factor);
+                    dynasm!(self.buffer
+                        ; mov al, factor as i8
+                        ; mul cl
+                        ; add BYTE [rdi + absoff as i32], al
+                        //; imul eax, ecx, factor as _
+                        //; add al, BYTE [rdi + absoff as i32]
+                        //; mov BYTE [rdi + absoff as i32], al
+                    );
                 }
             }
-            match self.opts.cell_size {
-                CellSize::Bits(8) => {
-                    dynasm!(self.buffer
-                        ; mov BYTE [rdi + *glob_offset as i32], 0
-                    );
-                },
-                CellSize::Bits(16) => {
-                    dynasm!(self.buffer
-                        ; mov WORD [rdi + 2 * *glob_offset as i32], 0
-                    );
-                },
-                CellSize::Bits(32) => {
-                    dynasm!(self.buffer
-                        ; mov DWORD [rdi + 4 * *glob_offset as i32], 0
-                    );
-                },
-                CellSize::Bits(64) => {
-                    dynasm!(self.buffer
-                        ; mov QWORD [rdi + 8 * *glob_offset as i32], 0
-                    );
-                },
-                _ => {}
-            }
+            dynasm!(self.buffer
+                ; mov BYTE [rdi + *glob_offset as i32], 0
+            );
         }
     }
 
     fn visit_move_ptr(&mut self, mp: &Instruction) {
         if let Instruction::MovePtr(offset) = mp {
+            //println!("lea rdi, [rdi + {}]", *offset as i32);
             dynasm!(self.buffer
                 ; lea rdi, [rdi + *offset as i32]
             );
@@ -390,6 +287,7 @@ impl<'a> ir::ConstVisitor for CodeGenerator<'a> {
                 ; push rdi
                 ; push rsi
                 ; sub rsp, 24
+                ; xor rdx, rdx
                 ; mov dil, BYTE [rdi + *offset as i32]
                 ; mov rax, QWORD putbyte as _
                 ; call rax
@@ -402,7 +300,7 @@ impl<'a> ir::ConstVisitor for CodeGenerator<'a> {
 }
 
 extern "C" fn putbyte(chr: u8) {
-    //print!("{:?}", chr as char);
+    //println!("{:?}", chr);
     std::io::stdout().write(&[chr]).unwrap();
     std::io::stdout().flush().unwrap();
 }

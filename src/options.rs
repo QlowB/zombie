@@ -15,6 +15,7 @@ pub enum CellSize {
 }
 
 
+#[derive(PartialEq, Clone)]
 pub struct Options {
     pub cell_layout: CellLayout,
     pub memory_size: usize,

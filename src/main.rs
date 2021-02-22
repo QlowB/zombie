@@ -53,6 +53,12 @@ fn main() -> io::Result<()> {
                 .short("m")
                 .takes_value(true)
                 .help("defines the cell modulus"))
+                
+        .arg(Arg::with_name("optimize")
+                .long("optimize")
+                .short("O")
+                .takes_value(true)
+                .help("defines the cell modulus"))
         .get_matches();
     
     let mut buffer = String::new();
@@ -84,6 +90,20 @@ fn main() -> io::Result<()> {
         }
     }
 
+
+    let opt_lvl: u64 = if let Some(opt) = matches.value_of("optimize") {
+        match u64::from_str(opt) {
+            Ok(o) => o,
+            Err(_e) => {
+                eprintln!("invalid optimization level '{}'", opt);
+                exit(1)
+            }
+        }
+    }
+    else {
+        0
+    };
+
     let insts = parser::parse(&buffer);
     if let Ok(mut insts) = insts {
         let mut lin_loop_optimizer = optimize::LinOptimizer::new();
@@ -99,9 +119,16 @@ fn main() -> io::Result<()> {
                 //println!("{}\n", inst.to_string());
             //}
             //println!("{}", trans::java::transpile(&insts));
-            //let c = trans::c::transpile_dfg(&dfg);
-            //println!("{}", c);
-            //println!("{}", trans::java::transpile(&insts));
+
+
+            if opt_lvl == 1 {
+                let arena = Arena::new();
+                let dfg = optimize::create_dfg(&mut insts, &arena);
+                let c = trans::c::transpile_dfg(&dfg);
+                println!("{}", c);
+                exit(0);
+            }
+            
             
             match matches.value_of("transpile") {
                 Some(lang) => {

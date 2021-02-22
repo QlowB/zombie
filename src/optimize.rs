@@ -79,9 +79,15 @@ impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
     fn visit_add(&mut self, add: &mut Instruction) {
         if let Instruction::Add{ offset, value } = add {
             let cell = self.get_cell(*offset);
-            let adder = self.arena.alloc(DfgNode::Const(*value));
-            let addition = self.arena.alloc(DfgNode::Add(cell, adder));
-            self.set_cell(*offset, addition);
+            if let DfgNode::Const(c) = cell {
+                let const_sum = self.arena.alloc(DfgNode::Const(*value + c));
+                self.set_cell(*offset, const_sum);
+            }
+            else {
+                let adder = self.arena.alloc(DfgNode::Const(*value));
+                let addition = self.arena.alloc(DfgNode::Add(cell, adder));
+                self.set_cell(*offset, addition);
+            }
         }
     }
 
