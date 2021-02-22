@@ -154,7 +154,7 @@ impl<'a> ir::MutVisitor for DfgOptimizer<'a> {
 
 
 struct MemoryState {
-    cellStates: BTreeMap<i64, CellState>,
+    cell_states: BTreeMap<i64, CellState>,
     default_cell: CellState
 }
 

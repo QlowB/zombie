@@ -17,7 +17,7 @@ pub enum CellSize {
 
 pub struct Options {
     pub cell_layout: CellLayout,
-    pub memory_size: i64,
+    pub memory_size: usize,
     pub cell_size: CellSize,
 }
 

@@ -1,6 +1,6 @@
 //#![feature(plugin)]
 //#![plugin(dynasm)]
-#![feature(proc_macro_hygiene)]
+//#![feature(proc_macro_hygiene)]
 #[macro_use]
 extern crate dynasm;
 
@@ -123,7 +123,7 @@ fn main() -> io::Result<()> {
                     println!("{}", code);
                 },
                 None => {
-                    let _code = compile::compile(&insts);
+                    let _code = compile::compile_and_run(&insts, &options);
                 }
             }
         }

@@ -124,53 +124,6 @@ pub fn run(instructions: &Vec<Instruction>, opts: &Options) {
 }
 
 
-fn run_instrs<T>(instructions: &Vec<Instruction>, data: &mut Data<T>)
-where
-T: Add<Output=T> + Sub<Output=T> + Mul<Output=T>,
-T: Copy + Eq + CellWrite + CellRead + FromNum
-{
-    let len = data.memory.len();
-    for inst in instructions {
-        match inst {
-            Instruction::Nop => {},
-            Instruction::Add{ offset, value } => {
-                let cell = &mut data.memory[(data.ptr + offset) as usize % len];
-                *cell = *cell + T::from(*value);
-            },
-            Instruction::Set{ offset, value } => {
-                let cell = &mut data.memory[(data.ptr + offset) as usize % len];
-                *cell = T::from(*value);
-            },
-            Instruction::MovePtr(offset) => {
-                data.ptr = data.ptr.wrapping_add(*offset);
-            },
-            Instruction::Loop(instrs) => {
-                while data.memory[data.ptr as usize % len] != T::from(0) {
-                    run_instrs(instrs, data);
-                }
-            },
-            Instruction::Read(offset) => {
-                let cell = &mut data.memory[(data.ptr + offset) as usize % len];
-                cell.read(&mut io::stdin());
-            },
-            Instruction::Write(offset) => {
-                let cell = data.memory[(data.ptr + offset) as usize % len];
-                cell.write(&mut io::stdout());
-            },
-            Instruction::LinearLoop{ offset: glob_offset, factors } => {
-                //assert_eq!(factors.get(&0), Some(&-1));
-                let multiplicator = data.memory[((data.ptr + glob_offset) as usize) % len];
-                for (offset, value) in factors {
-                    let cell = &mut data.memory[(data.ptr + offset + glob_offset) as usize % len];
-                    *cell = *cell + (multiplicator * T::from(*value));
-                }
-                data.memory[((data.ptr + glob_offset) as usize) % len] = T::from(0);
-            },
-        }
-    }
-}
-
-
 fn run_with_funcs<T>(instructions: &Vec<Instruction>,
                  data: &mut Data<T>,
                  add: &dyn Fn(T, T) -> T,
