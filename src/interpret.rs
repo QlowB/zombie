@@ -45,7 +45,7 @@ impl FromNum for Wrapping<u16> {
 }
 impl CellWrite for Wrapping<u16> {
     fn write<S: Write>(&self, s: &mut S) {
-        write!(s, "{}", self.0);
+        s.write(&[self.0 as _]).unwrap();
         s.flush().unwrap();
     }
 }

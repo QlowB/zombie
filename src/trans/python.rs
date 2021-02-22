@@ -22,23 +22,23 @@ fn generate(formatter: &mut Formatter, instrs: &Vec<Instruction>, opts: &Options
 
     let cell_mask = match opts.cell_size {
         CellSize::Bits(n) => {
-            "0x".to_owned() + &hex_bitmask(n)
+            " & 0x".to_owned() + &hex_bitmask(n)
         },
-        CellSize::Modular(n) => n.to_string(),
-        CellSize::Int => "-1".to_owned()
+        CellSize::Modular(n) => " % ".to_owned() + &n.to_string(),
+        CellSize::Int => "".to_owned()
     };
     for instr in instrs {
         match instr {
             Instruction::Nop => {},
             Instruction::Add{ offset, value } => {
-                formatter.add_line(&format!("mem[(ptr + {}) & 0xFFFF] = (mem[(ptr + {}) & 0xFFFF] + {}) & {}", offset, offset, value, cell_mask));
+                formatter.add_line(&format!("mem[(ptr + {}) & 0xFFFF] = (mem[(ptr + {}) & 0xFFFF] + {}){}", offset, offset, value, cell_mask));
             },
             Instruction::Set{ offset, value } => {
-                formatter.add_line(&format!("mem[(ptr + {}) & 0xFFFF] = {} & {}", offset, value, cell_mask));
+                formatter.add_line(&format!("mem[(ptr + {}) & 0xFFFF] = {}{}", offset, value, cell_mask));
             },
             Instruction::LinearLoop{ offset, factors } => {
                 for (off, factor) in factors {
-                    formatter.add_line(&format!("mem[(ptr + {}) & 0xFFFF] = (mem[(ptr + {}) & 0xFFFF] + {} * mem[(ptr + {}) & 0xFFFF]) & {}",
+                    formatter.add_line(&format!("mem[(ptr + {}) & 0xFFFF] = (mem[(ptr + {}) & 0xFFFF] + {} * mem[(ptr + {}) & 0xFFFF]){}",
                                                 offset + off, offset + off, factor, offset, cell_mask));
                 }
                 formatter.add_line(&format!("mem[(ptr + {}) & 0xFFFF] = 0", offset));
@@ -53,7 +53,7 @@ fn generate(formatter: &mut Formatter, instrs: &Vec<Instruction>, opts: &Options
                 formatter.unindent();
             },
             Instruction::Read(offset) => {
-                formatter.add_line(&format!("mem[(ptr + {}) & 0xFFFF] = sys.stdin.buffer.read(1)", offset));
+                formatter.add_line(&format!("mem[(ptr + {}) & 0xFFFF] = sys.stdin.buffer.read(1){}", offset, cell_mask));
             },
             Instruction::Write(offset) => {
                 formatter.add_line(&format!("sys.stdout.buffer.write(mem[(ptr + {}) & 0xFFFF].to_bytes(1, 'little'))", offset));

@@ -112,7 +112,7 @@ impl CodeGenerator {
 impl ir::ConstVisitor for CodeGenerator {
     type Ret = ();
 
-    fn visit_nop(&mut self, nop: &Instruction) {
+    fn visit_nop(&mut self, _nop: &Instruction) {
     }
 
     fn visit_add(&mut self, add: &'_ Instruction) {
@@ -133,10 +133,9 @@ impl ir::ConstVisitor for CodeGenerator {
 
     fn visit_linear_loop(&mut self, l: &Instruction) {
         if let Instruction::LinearLoop{ offset: glob_offset, factors } = l {
-            if factors.len() > 1 ||
-                factors.len() >= 1 && !factors.contains_key(&0) {
+            if factors.len() > 0 {
                 dynasm!(self.buffer
-                    ; movzx ecx, BYTE [rdi + *glob_offset as i32]
+                    ; movzx rcx, BYTE [rdi + *glob_offset as i32]
                 );
             }
             for (&offset, &factor) in factors {
@@ -161,19 +160,19 @@ impl ir::ConstVisitor for CodeGenerator {
                 else if factor == 3 {
                     dynasm!(self.buffer
                         ; lea ebx, [rcx + rcx * 2]
-                        ; mov [rdi + offset as i32], bl
+                        ; add BYTE [rdi + absoff as i32], bl
                     );
                 }
                 else if factor == 5 {
                     dynasm!(self.buffer
                         ; lea ebx, [rcx + rcx * 4]
-                        ; mov [rdi + offset as i32], bl
+                        ; add BYTE [rdi + absoff as i32], bl
                     );
                 }
                 else if factor == 9 {
                     dynasm!(self.buffer
                         ; lea ebx, [rcx + rcx * 8]
-                        ; mov [rdi + offset as i32], bl
+                        ; add BYTE [rdi + absoff as i32], bl
                     );
                 }
                 else if factor.count_ones() == 1 {
@@ -265,7 +264,8 @@ impl ir::ConstVisitor for CodeGenerator {
 
 extern "C" fn putbyte(chr: u8) {
     //print!("{:?}", chr as char);
-    std::io::stdout().write(&[chr]);
+    std::io::stdout().write(&[chr]).unwrap();
+    std::io::stdout().flush().unwrap();
 }
 
 extern "C" fn readbyte() -> u8 {
