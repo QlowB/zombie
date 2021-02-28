@@ -42,16 +42,15 @@ pub fn compile_and_run<'a>(instrs: &Vec<ir::Instruction>, opts: &'a Options) -> 
         mem::transmute(buf.ptr(entry))
     };
 
-    //let mut data: Vec<u8> = Vec::with_capacity(100000);
-    let layout = match opts.cell_layout {
-        CellLayout::Trusting => std::alloc::Layout::array::<u8>(opts.memory_size).unwrap(),
-        CellLayout::Wrapping => std::alloc::Layout::array::<u8>(opts.memory_size).unwrap(),
-        CellLayout::Unbounded => std::alloc::Layout::array::<u8>(opts.memory_size).unwrap(),
-    };
     unsafe {
+        let layout = match opts.cell_layout {
+            CellLayout::Trusting => std::alloc::Layout::array::<u8>(opts.memory_size).unwrap(),
+            CellLayout::Wrapping => std::alloc::Layout::array::<u8>(opts.memory_size).unwrap(),
+            CellLayout::Unbounded => std::alloc::Layout::array::<u8>(opts.memory_size).unwrap(),
+        };
         let mem = std::alloc::alloc_zeroed(layout);
         match opts.cell_layout {
-            CellLayout::Trusting => { function(mem.offset(0x80000)); },
+            CellLayout::Trusting => { function(mem.offset(0x8000)); },
             _ => { function(mem); }
         }
         std::alloc::dealloc(mem, layout);
@@ -129,7 +128,6 @@ impl<'a> ir::ConstVisitor for CodeGenerator<'a> {
             dynasm!(self.buffer
                 ; add BYTE [rdi + *offset as i32], *value as i8
             );
-
         }
     }
 
@@ -145,7 +143,7 @@ impl<'a> ir::ConstVisitor for CodeGenerator<'a> {
         if let Instruction::LinearLoop{ offset: glob_offset, factors } = l {
             if factors.len() > 0 {
                 dynasm!(self.buffer
-                    ; movzx rcx, BYTE [rdi + *glob_offset as i32]
+                    ; movzx ecx, BYTE [rdi + *glob_offset as i32]
                 );
             }
             for (&offset, &factor) in factors {
@@ -156,7 +154,7 @@ impl<'a> ir::ConstVisitor for CodeGenerator<'a> {
                 let absoff = offset + glob_offset;
                 if factor == 0 {
                 }
-                else if factor == 1 {
+                /*else if factor == 1 {
                     //println!("add BYTE [rdi + {}], cl", absoff as i32);
                     dynasm!(self.buffer
                         ; add BYTE [rdi + absoff as i32], cl
@@ -167,14 +165,14 @@ impl<'a> ir::ConstVisitor for CodeGenerator<'a> {
                     dynasm!(self.buffer
                         ; sub BYTE [rdi + absoff as i32], cl
                     );
-                }
+                }*/
                 /*else if factor == 2 {
                     //println!("; some ins (factor = {})", factor);
                     dynasm!(self.buffer
                         ; lea ebx, [rcx + rcx]
                         ; add BYTE [rdi + absoff as i32], bl
                     );
-                }*/
+                }
                 else if factor == 3 {
                     //println!("; some ins (factor = {})", factor);
                     dynasm!(self.buffer
@@ -189,14 +187,14 @@ impl<'a> ir::ConstVisitor for CodeGenerator<'a> {
                         ; add BYTE [rdi + absoff as i32], bl
                     );
                 }
-                /*else if factor == 7 {
+                else if factor == 7 {
                     //println!("; some ins (factor = {})", factor);
                     dynasm!(self.buffer
                         ; lea ebx, [0 + rcx * 8]
                         ; sub ebx, ecx
                         ; add BYTE [rdi + absoff as i32], bl
                     );
-                }*/
+                }
                 else if factor == 9 {
                     //println!("; some ins (factor = {})", factor);
                     dynasm!(self.buffer
@@ -219,7 +217,7 @@ impl<'a> ir::ConstVisitor for CodeGenerator<'a> {
                         ; shl bl, factor.trailing_zeros() as i8
                         ; sub BYTE [rdi + absoff as i32], bl
                     );
-                }
+                }*/
                 else {
                     //println!("; some ins (factor = {})", factor);
                     dynasm!(self.buffer
